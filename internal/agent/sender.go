@@ -56,6 +56,8 @@ func SendMetric(name string, value interface{}) error {
 		sendValue = fmt.Sprintf("%d", value)
 	case int64:
 		sendValue = fmt.Sprintf("%d", value)
+	default:
+		return fmt.Errorf("ошибка создания url невалидное значение")
 	}
 	url := fmt.Sprintf("http://localhost:8080/update/%s/%s/%s", mType, name, sendValue)
 	req, err := http.NewRequest("POST", url, nil)

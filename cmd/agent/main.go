@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/krtech-it/metricagent/internal/agent"
 	"time"
@@ -8,8 +9,9 @@ import (
 
 func main() {
 	collector := agent.NewCollector()
-
-	go collector.Add()
+	ctx, cancel := context.WithCancel(context.Background())
+	go collector.Add(ctx, 2000)
+	defer cancel()
 
 	go func() {
 		ticker := time.NewTicker(10 * time.Second)
