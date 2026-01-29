@@ -26,7 +26,7 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	path = strings.TrimPrefix(path, "/update/")
 	path_args := strings.Split(path, "/")
 	if len(path_args) != 3 {
-		http.Error(w, "invalid path", http.StatusBadRequest)
+		http.Error(w, "invalid path", http.StatusNotFound)
 		return
 	}
 	metric_type := path_args[0]
