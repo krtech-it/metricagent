@@ -2,18 +2,19 @@ package handler
 
 import (
 	models "github.com/krtech-it/metricagent/internal/model"
+	"github.com/krtech-it/metricagent/internal/service"
 	"net/http"
 	"strconv"
 	"strings"
 )
 
 type Handler struct {
-	storage models.Storage
+	metricUseCase *service.MetricUseCase
 }
 
-func NewHandler(storage models.Storage) *Handler {
+func NewHandler(metricUseCase *service.MetricUseCase) *Handler {
 	return &Handler{
-		storage: storage,
+		metricUseCase: metricUseCase,
 	}
 }
 
@@ -40,25 +41,21 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid path", http.StatusNotFound)
 		return
 	}
+
+	var metric *models.Metrics
+
 	if metricType == models.Counter {
 		delta, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
 			http.Error(w, "invalid path", http.StatusBadRequest)
 			return
 		}
-		metric := &models.Metrics{
+		metric = &models.Metrics{
 			ID:    ID,
 			MType: metricType,
 			Delta: &delta,
 			Value: nil,
 			Hash:  "",
-		}
-		oldMetric, err := h.storage.Get(metric.ID)
-		if err != nil {
-			h.storage.Create(metric)
-		} else {
-			delta += *oldMetric.Delta
-			h.storage.Update(metric)
 		}
 	} else if metricType == models.Gauge {
 		valueFloat64, err := strconv.ParseFloat(value, 64)
@@ -66,17 +63,18 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "invalid path", http.StatusBadRequest)
 			return
 		}
-		metric := &models.Metrics{
+		metric = &models.Metrics{
 			ID:    ID,
 			MType: metricType,
 			Value: &valueFloat64,
 			Delta: nil,
 			Hash:  "",
 		}
-		if h.storage.Update(metric) != nil {
-			h.storage.Create(metric)
-		}
 	}
+	if err := h.metricUseCase.Update(metric); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 	w.Write(nil)
