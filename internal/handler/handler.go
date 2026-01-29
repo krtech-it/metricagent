@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	models "github.com/krtech-it/metricagent/internal/model"
 	"net/http"
 	"strconv"
@@ -19,32 +18,38 @@ func NewHandler(storage models.Storage) *Handler {
 }
 
 func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "", http.StatusNotFound)
+		return
+	}
 	path := r.URL.Path
 	path = strings.TrimPrefix(path, "/update/")
 	path_args := strings.Split(path, "/")
 	if len(path_args) != 3 {
-		http.Error(w, "invalid path", http.StatusNotFound)
+		http.Error(w, "invalid path", http.StatusBadRequest)
+		return
 	}
 	metric_type := path_args[0]
 	ID := path_args[1]
 	value := path_args[2]
 	if !(metric_type == models.Gauge || metric_type == models.Counter) {
 		http.Error(w, "invalid path", http.StatusBadRequest)
+		return
 	}
 	if ID == "" {
 		http.Error(w, "invalid path", http.StatusNotFound)
+		return
 	}
 	if metric_type == models.Counter {
-		delta, err := strconv.Atoi(value)
+		delta, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
 			http.Error(w, "invalid path", http.StatusBadRequest)
+			return
 		}
-		delta_int64 := int64(delta)
-		fmt.Print(delta)
 		metric := &models.Metrics{
 			ID:    ID,
 			MType: metric_type,
-			Delta: &delta_int64,
+			Delta: &delta,
 			Value: nil,
 			Hash:  "",
 		}
@@ -52,14 +57,14 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			h.storage.Create(metric)
 		} else {
-			delta_int64 += *old_metric.Delta
-			metric.Delta = &delta_int64
+			delta += *old_metric.Delta
 			h.storage.Update(metric)
 		}
 	} else if metric_type == models.Gauge {
 		value_float64, err := strconv.ParseFloat(value, 64)
 		if err != nil {
 			http.Error(w, "invalid path", http.StatusBadRequest)
+			return
 		}
 		metric := &models.Metrics{
 			ID:    ID,
