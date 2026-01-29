@@ -24,15 +24,15 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	}
 	path := r.URL.Path
 	path = strings.TrimPrefix(path, "/update/")
-	path_args := strings.Split(path, "/")
-	if len(path_args) != 3 {
+	pathArgs := strings.Split(path, "/")
+	if len(pathArgs) != 3 {
 		http.Error(w, "invalid path", http.StatusNotFound)
 		return
 	}
-	metric_type := path_args[0]
-	ID := path_args[1]
-	value := path_args[2]
-	if !(metric_type == models.Gauge || metric_type == models.Counter) {
+	metricType := pathArgs[0]
+	ID := pathArgs[1]
+	value := pathArgs[2]
+	if !(metricType == models.Gauge || metricType == models.Counter) {
 		http.Error(w, "invalid path", http.StatusBadRequest)
 		return
 	}
@@ -40,7 +40,7 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid path", http.StatusNotFound)
 		return
 	}
-	if metric_type == models.Counter {
+	if metricType == models.Counter {
 		delta, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
 			http.Error(w, "invalid path", http.StatusBadRequest)
@@ -48,28 +48,28 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 		}
 		metric := &models.Metrics{
 			ID:    ID,
-			MType: metric_type,
+			MType: metricType,
 			Delta: &delta,
 			Value: nil,
 			Hash:  "",
 		}
-		old_metric, err := h.storage.Get(metric.ID)
+		oldMetric, err := h.storage.Get(metric.ID)
 		if err != nil {
 			h.storage.Create(metric)
 		} else {
-			delta += *old_metric.Delta
+			delta += *oldMetric.Delta
 			h.storage.Update(metric)
 		}
-	} else if metric_type == models.Gauge {
-		value_float64, err := strconv.ParseFloat(value, 64)
+	} else if metricType == models.Gauge {
+		valueFloat64, err := strconv.ParseFloat(value, 64)
 		if err != nil {
 			http.Error(w, "invalid path", http.StatusBadRequest)
 			return
 		}
 		metric := &models.Metrics{
 			ID:    ID,
-			MType: metric_type,
-			Value: &value_float64,
+			MType: metricType,
+			Value: &valueFloat64,
 			Delta: nil,
 			Hash:  "",
 		}
