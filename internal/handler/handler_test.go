@@ -44,12 +44,18 @@ func TestUpdateMetricCounterAccumulates(t *testing.T) {
 	req1 := httptest.NewRequest(http.MethodPost, "/update/counter/PollCount/5", nil)
 	rec1 := httptest.NewRecorder()
 	h.UpdateMetric(rec1, req1)
-	assert.Equal(t, http.StatusOK, rec1.Result().StatusCode)
+	res1 := rec1.Result()
+	defer res1.Body.Close()
+
+	assert.Equal(t, http.StatusOK, res1.StatusCode)
 
 	req2 := httptest.NewRequest(http.MethodPost, "/update/counter/PollCount/7", nil)
 	rec2 := httptest.NewRecorder()
 	h.UpdateMetric(rec2, req2)
-	assert.Equal(t, http.StatusOK, rec2.Result().StatusCode)
+	res2 := rec2.Result()
+	defer res2.Body.Close()
+
+	assert.Equal(t, http.StatusOK, res2.StatusCode)
 
 	metric, err := storage.Get("PollCount")
 	require.NoError(t, err)
