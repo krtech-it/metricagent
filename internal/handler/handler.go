@@ -98,9 +98,9 @@ func (h *Handler) GetMetric(c *gin.Context) {
 	}
 	switch metric.MType {
 	case models.Gauge:
-		c.String(http.StatusOK, "%s : %f", metric.ID, *metric.Value)
+		c.String(http.StatusOK, "%.3f", *metric.Value)
 	case models.Counter:
-		c.String(http.StatusOK, "%s : %d", metric.ID, *metric.Delta)
+		c.String(http.StatusOK, "%d", *metric.Delta)
 	}
 }
 
