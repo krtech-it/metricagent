@@ -9,7 +9,7 @@ import (
 
 func TestNewCollector(t *testing.T) {
 	c := NewCollector()
-	assert.Equal(t, 0, c.counter)
+	assert.Equal(t, int64(0), c.counter)
 	assert.Equal(t, 0, len(c.Storage))
 }
 
