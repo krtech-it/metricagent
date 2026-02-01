@@ -90,6 +90,7 @@ func (h *Handler) GetMetric(c *gin.Context) {
 	metric, err := h.metricUseCase.GetMetric(ID)
 	if err != nil {
 		c.String(http.StatusNotFound, "ID: %s does not exist", ID)
+		return
 	}
 	if metric.MType != metricType {
 		c.String(http.StatusBadRequest, "invalid path")
@@ -101,4 +102,13 @@ func (h *Handler) GetMetric(c *gin.Context) {
 	case models.Counter:
 		c.String(http.StatusOK, "%s : %d", metric.ID, *metric.Delta)
 	}
+}
+
+func (h *Handler) GetMainHTML(c *gin.Context) {
+	metrics, err := h.metricUseCase.GetAllMetrics()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.HTML(http.StatusOK, "main_server.html", metrics)
 }

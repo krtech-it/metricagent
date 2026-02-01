@@ -22,4 +22,5 @@ type Storage interface {
 	Update(metric *Metrics) error
 	Create(metric *Metrics) error
 	Get(id string) (*Metrics, error)
+	GetAll() ([]*Metrics, error)
 }

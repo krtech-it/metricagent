@@ -15,9 +15,10 @@ func main() {
 	h := handler.NewHandler(metricUseCase)
 
 	r := gin.Default()
-
+	r.LoadHTMLGlob("internal/templates/*")
 	r.POST("/update/:metricType/:ID/:value", gin.WrapF(h.UpdateMetric))
-	r.GET("/update/value/:metricType/:ID", h.GetMetric)
+	r.GET("/value/:metricType/:ID", h.GetMetric)
+	r.GET("/", h.GetMainHTML)
 
 	log.Println("Listening on port 8080")
 	err := r.Run(":8080")
