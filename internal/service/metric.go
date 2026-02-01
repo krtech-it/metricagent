@@ -31,3 +31,7 @@ func (m *MetricUseCase) Update(metric *models.Metrics) error {
 	}
 	return nil
 }
+
+func (m *MetricUseCase) GetMetric(ID string) (*models.Metrics, error) {
+	return m.storage.Get(ID)
+}

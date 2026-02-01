@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"github.com/gin-gonic/gin"
 	models "github.com/krtech-it/metricagent/internal/model"
 	"github.com/krtech-it/metricagent/internal/service"
 	"net/http"
@@ -78,4 +79,26 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 	w.Write(nil)
+}
+
+func (h *Handler) GetMetric(c *gin.Context) {
+	metricType := c.Param("metricType")
+	ID := c.Param("ID")
+	if metricType != models.Gauge && metricType != models.Counter {
+		c.String(http.StatusNotFound, "invalid path")
+	}
+	metric, err := h.metricUseCase.GetMetric(ID)
+	if err != nil {
+		c.String(http.StatusNotFound, "ID: %s does not exist", ID)
+	}
+	if metric.MType != metricType {
+		c.String(http.StatusBadRequest, "invalid path")
+		return
+	}
+	switch metric.MType {
+	case models.Gauge:
+		c.String(http.StatusOK, "%s : %f", metric.ID, *metric.Value)
+	case models.Counter:
+		c.String(http.StatusOK, "%s : %d", metric.ID, *metric.Delta)
+	}
 }
