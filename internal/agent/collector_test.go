@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 )
@@ -19,7 +20,8 @@ func TestCollector_Add(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	go c.Add(ctx, 20)
 	time.Sleep(22 * time.Millisecond)
-	randomValue, _ := c.Storage["RandomValue"]
+	randomValue, ok := c.Storage["RandomValue"]
+	require.Equal(t, true, ok)
 	assert.Equal(t, len(gaugeArea)+1, len(c.Storage))
 	assert.Equal(t, int64(1), c.counter)
 	time.Sleep(22 * time.Millisecond)
