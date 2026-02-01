@@ -98,7 +98,11 @@ func (h *Handler) GetMetric(c *gin.Context) {
 	}
 	switch metric.MType {
 	case models.Gauge:
-		c.String(http.StatusOK, "%.3f", *metric.Value)
+		s := strconv.FormatFloat(*metric.Value, 'f', 3, 64) // всегда 3 знака: "45.400"
+		if strings.Contains(s, ".") {
+			s = strings.TrimRight(strings.TrimRight(s, "0"), ".") // убираем нули и точку
+		}
+		c.String(http.StatusOK, s)
 	case models.Counter:
 		c.String(http.StatusOK, "%d", *metric.Delta)
 	}
