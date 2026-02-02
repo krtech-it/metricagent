@@ -6,9 +6,15 @@ import (
 	"github.com/krtech-it/metricagent/internal/repository"
 	"github.com/krtech-it/metricagent/internal/service"
 	"log"
+	"strconv"
 )
 
 func main() {
+	addr := new(SetServer)
+	if err := addr.Set(); err != nil {
+		log.Fatal(err)
+		return
+	}
 	storage := repository.NewMemStorage()
 	metricUseCase := service.NewMetricUseCase(storage)
 
@@ -20,8 +26,8 @@ func main() {
 	r.GET("/value/:metricType/:ID", h.GetMetric)
 	r.GET("/", h.GetMainHTML)
 
-	log.Println("Listening on port 8080")
-	err := r.Run(":8080")
+	log.Println("Listening on port ", strconv.Itoa(addr.port))
+	err := r.Run(addr.host + ":" + strconv.Itoa(addr.port))
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -4,18 +4,21 @@ import (
 	"context"
 	"math/rand"
 	"runtime"
+	"sync"
 	"time"
 )
 
 type Collector struct {
-	Storage map[string]interface{}
+	mu      sync.RWMutex
+	storage map[string]interface{}
 	counter int64
 }
 
 func NewCollector() *Collector {
 	return &Collector{
-		Storage: make(map[string]interface{}),
+		storage: make(map[string]interface{}),
 		counter: 0,
+		mu:      sync.RWMutex{},
 	}
 }
 
@@ -30,38 +33,49 @@ func (c *Collector) Add(ctx context.Context, timeTicker time.Duration) {
 		case <-ticker.C:
 			var memStats runtime.MemStats
 			runtime.ReadMemStats(&memStats)
-
-			c.Storage["Alloc"] = memStats.Alloc
-			c.Storage["BuckHashSys"] = memStats.BuckHashSys
-			c.Storage["Frees"] = memStats.Frees
-			c.Storage["GCCPUFraction"] = memStats.GCCPUFraction
-			c.Storage["GCSys"] = memStats.GCSys
-			c.Storage["HeapAlloc"] = memStats.HeapAlloc
-			c.Storage["HeapIdle"] = memStats.HeapIdle
-			c.Storage["HeapInuse"] = memStats.HeapInuse
-			c.Storage["HeapObjects"] = memStats.HeapObjects
-			c.Storage["HeapReleased"] = memStats.HeapReleased
-			c.Storage["HeapSys"] = memStats.HeapSys
-			c.Storage["LastGC"] = memStats.LastGC
-			c.Storage["Lookups"] = memStats.Lookups
-			c.Storage["MCacheInuse"] = memStats.MCacheInuse
-			c.Storage["MCacheSys"] = memStats.MCacheSys
-			c.Storage["MSpanInuse"] = memStats.MSpanInuse
-			c.Storage["MSpanSys"] = memStats.MSpanSys
-			c.Storage["Mallocs"] = memStats.Mallocs
-			c.Storage["NextGC"] = memStats.NextGC
-			c.Storage["NumForcedGC"] = memStats.NumForcedGC
-			c.Storage["NumGC"] = memStats.NumGC
-			c.Storage["OtherSys"] = memStats.OtherSys
-			c.Storage["PauseTotalNs"] = memStats.PauseTotalNs
-			c.Storage["StackInuse"] = memStats.StackInuse
-			c.Storage["StackSys"] = memStats.StackSys
-			c.Storage["Sys"] = memStats.Sys
-			c.Storage["TotalAlloc"] = memStats.TotalAlloc
+			c.mu.Lock()
+			c.storage["Alloc"] = memStats.Alloc
+			c.storage["BuckHashSys"] = memStats.BuckHashSys
+			c.storage["Frees"] = memStats.Frees
+			c.storage["GCCPUFraction"] = memStats.GCCPUFraction
+			c.storage["GCSys"] = memStats.GCSys
+			c.storage["HeapAlloc"] = memStats.HeapAlloc
+			c.storage["HeapIdle"] = memStats.HeapIdle
+			c.storage["HeapInuse"] = memStats.HeapInuse
+			c.storage["HeapObjects"] = memStats.HeapObjects
+			c.storage["HeapReleased"] = memStats.HeapReleased
+			c.storage["HeapSys"] = memStats.HeapSys
+			c.storage["LastGC"] = memStats.LastGC
+			c.storage["Lookups"] = memStats.Lookups
+			c.storage["MCacheInuse"] = memStats.MCacheInuse
+			c.storage["MCacheSys"] = memStats.MCacheSys
+			c.storage["MSpanInuse"] = memStats.MSpanInuse
+			c.storage["MSpanSys"] = memStats.MSpanSys
+			c.storage["Mallocs"] = memStats.Mallocs
+			c.storage["NextGC"] = memStats.NextGC
+			c.storage["NumForcedGC"] = memStats.NumForcedGC
+			c.storage["NumGC"] = memStats.NumGC
+			c.storage["OtherSys"] = memStats.OtherSys
+			c.storage["PauseTotalNs"] = memStats.PauseTotalNs
+			c.storage["StackInuse"] = memStats.StackInuse
+			c.storage["StackSys"] = memStats.StackSys
+			c.storage["Sys"] = memStats.Sys
+			c.storage["TotalAlloc"] = memStats.TotalAlloc
 
 			c.counter++
-			c.Storage["PoolCount"] = c.counter
-			c.Storage["RandomValue"] = rand.Float64()
+			c.storage["PoolCount"] = c.counter
+			c.storage["RandomValue"] = rand.Float64()
+			c.mu.Unlock()
 		}
 	}
+}
+
+func (c *Collector) CopyStorage() map[string]interface{} {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	storageCopy := make(map[string]interface{})
+	for k, v := range c.storage {
+		storageCopy[k] = v
+	}
+	return storageCopy
 }

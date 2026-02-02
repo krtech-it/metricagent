@@ -39,7 +39,7 @@ var (
 	}
 )
 
-func SendMetric(name string, value interface{}) error {
+func SendMetric(name string, value interface{}, host string) error {
 	var mType string
 	if slices.Contains(gaugeArea[:], name) {
 		mType = "gauge"
@@ -59,7 +59,7 @@ func SendMetric(name string, value interface{}) error {
 	default:
 		return fmt.Errorf("ошибка создания url невалидное значение")
 	}
-	url := fmt.Sprintf("http://localhost:8080/update/%s/%s/%s", mType, name, sendValue)
+	url := fmt.Sprintf("http://%s/update/%s/%s/%s", host, mType, name, sendValue)
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		return err
