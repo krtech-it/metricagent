@@ -11,7 +11,7 @@ import (
 func TestSendMetric(t *testing.T) {
 	mux := http.NewServeMux()
 	var gotPaths string
-	var host string = "127.0.0.1:8080"
+	var host = "127.0.0.1:8080"
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		gotPaths = r.URL.Path
