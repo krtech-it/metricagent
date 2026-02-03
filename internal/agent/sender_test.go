@@ -29,7 +29,7 @@ func TestSendMetric(t *testing.T) {
 		value interface{}
 		url   string
 	}{
-		{name: "Alloc", value: float64(45.34), url: "/update/gauge/Alloc/45.340000"},
+		{name: "Alloc", value: 45.34, url: "/update/gauge/Alloc/45.34"},
 		{name: "PoolCount", value: int64(1), url: "/update/counter/PoolCount/1"},
 	}
 	for _, tt := range tests {

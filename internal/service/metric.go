@@ -2,13 +2,14 @@ package service
 
 import (
 	models "github.com/krtech-it/metricagent/internal/model"
+	"github.com/krtech-it/metricagent/internal/repository"
 )
 
 type MetricUseCase struct {
-	storage models.Storage
+	storage repository.Storage
 }
 
-func NewMetricUseCase(storage models.Storage) *MetricUseCase {
+func NewMetricUseCase(storage repository.Storage) *MetricUseCase {
 	return &MetricUseCase{
 		storage: storage,
 	}
@@ -18,13 +19,12 @@ func (m *MetricUseCase) Update(metric *models.Metrics) error {
 	if metric.MType == models.Counter {
 		oldMetric, err := m.storage.Get(metric.ID)
 		if err != nil {
-			m.storage.Create(metric)
+			return m.storage.Create(metric)
 		} else {
 			*metric.Delta += *oldMetric.Delta
 			return m.storage.Update(metric)
 		}
 	} else if metric.MType == models.Gauge {
-
 		if m.storage.Update(metric) != nil {
 			return m.storage.Create(metric)
 		}

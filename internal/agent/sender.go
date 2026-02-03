@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"strconv"
 )
 
 var (
@@ -47,15 +48,15 @@ func SendMetric(name string, value interface{}, host string) error {
 		mType = "counter"
 	}
 	var sendValue string
-	switch value.(type) {
+	switch v := value.(type) {
 	case uint64:
-		sendValue = fmt.Sprintf("%d", value)
+		sendValue = strconv.Itoa(int(v))
 	case float64:
-		sendValue = fmt.Sprintf("%f", value)
+		sendValue = strconv.FormatFloat(v, 'f', -1, 64)
 	case uint32:
-		sendValue = fmt.Sprintf("%d", value)
+		sendValue = strconv.Itoa(int(v))
 	case int64:
-		sendValue = fmt.Sprintf("%d", value)
+		sendValue = strconv.Itoa(int(v))
 	default:
 		return fmt.Errorf("ошибка создания url невалидное значение")
 	}

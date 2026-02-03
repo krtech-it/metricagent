@@ -17,10 +17,3 @@ type Metrics struct {
 	Value *float64 `json:"value,omitempty"`
 	Hash  string   `json:"hash,omitempty"`
 }
-
-type Storage interface {
-	Update(metric *Metrics) error
-	Create(metric *Metrics) error
-	Get(id string) (*Metrics, error)
-	GetAll() ([]*Metrics, error)
-}

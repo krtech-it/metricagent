@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	models "github.com/krtech-it/metricagent/internal/model"
 	"github.com/krtech-it/metricagent/internal/service"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -78,7 +79,6 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
-	w.Write(nil)
 }
 
 func (h *Handler) GetMetric(c *gin.Context) {
@@ -111,7 +111,8 @@ func (h *Handler) GetMetric(c *gin.Context) {
 func (h *Handler) GetMainHTML(c *gin.Context) {
 	metrics, err := h.metricUseCase.GetAllMetrics()
 	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
+		log.Printf("handler: GetMainHTML, error: %s \n", err)
+		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 	c.HTML(http.StatusOK, "main_server.html", metrics)

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"context"
-	"fmt"
 	"github.com/krtech-it/metricagent/internal/agent"
 	"log"
 	"strconv"
@@ -10,29 +8,34 @@ import (
 )
 
 func main() {
-	setAgent := new(SetAgent)
-	if err := setAgent.Set(); err != nil {
+	setAgent, err := NewSetAgent()
+	if err != nil {
 		log.Fatal(err)
-		return
 	}
 	collector := agent.NewCollector()
-	ctx, cancel := context.WithCancel(context.Background())
-	go collector.Add(ctx, time.Duration(setAgent.pollInterval*1000))
-	defer cancel()
+	tickerPool := time.NewTicker(time.Duration(setAgent.pollInterval) * time.Second)
+	tickerReport := time.NewTicker(time.Duration(setAgent.reportInterval) * time.Second)
+	done := make(chan bool)
 
 	go func() {
-		ticker := time.NewTicker(time.Duration(setAgent.reportInterval) * time.Second)
-		defer ticker.Stop()
-
-		for range ticker.C {
-			for name, value := range collector.CopyStorage() {
-				err := agent.SendMetric(name, value, setAgent.host+":"+strconv.Itoa(setAgent.port))
-				if err != nil {
-					fmt.Println(err)
+		for {
+			select {
+			case <-done:
+				return
+			case <-tickerPool.C:
+				collector.Add()
+			case <-tickerReport.C:
+				for name, value := range collector.CopyStorage() {
+					err := agent.SendMetric(name, value, setAgent.host+":"+strconv.Itoa(setAgent.port))
+					if err != nil {
+						log.Printf("error send metric: %s \n", err)
+					}
 				}
 			}
 		}
 	}()
-
+	defer tickerPool.Stop()
+	defer tickerReport.Stop()
+	defer close(done)
 	select {}
 }
