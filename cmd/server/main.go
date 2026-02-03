@@ -7,14 +7,13 @@ import (
 )
 
 func main() {
-	addr := new(SetServer)
-	if err := addr.Set(); err != nil {
+	addr, err := NewSetServer()
+	if err != nil {
 		log.Fatal(err)
-		return
 	}
 	router := delivery.NewRouter()
 	log.Println("Listening on port ", strconv.Itoa(addr.port))
-	err := router.Run(addr.host + ":" + strconv.Itoa(addr.port))
+	err = router.Run(addr.host + ":" + strconv.Itoa(addr.port))
 	if err != nil {
 		log.Fatal(err)
 	}

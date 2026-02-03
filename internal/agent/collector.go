@@ -7,16 +7,18 @@ import (
 )
 
 type Collector struct {
-	mu      sync.Mutex
-	storage map[string]interface{}
-	counter int64
+	mu             sync.Mutex
+	storage        map[string]interface{}
+	counter        int64
+	reserveCounter int64
 }
 
 func NewCollector() *Collector {
 	return &Collector{
-		storage: make(map[string]interface{}),
-		counter: 0,
-		mu:      sync.Mutex{},
+		storage:        make(map[string]interface{}),
+		counter:        0,
+		reserveCounter: 0,
+		mu:             sync.Mutex{},
 	}
 }
 
@@ -66,6 +68,20 @@ func (c *Collector) CopyStorage() map[string]interface{} {
 	for k, v := range c.storage {
 		storageCopy[k] = v
 	}
-	c.counter = 0
+	c.reserveCounter = c.counter
 	return storageCopy
+}
+
+func (c *Collector) ResetCounter() {
+	// выполняется после успешной отправки на сервер
+	// если счетчик успел обновиться пока был процесс отправки на сервер
+	// фиксируем разницу с резервным счетчиком и сбрасываем reserveCounter до 0
+	// так точно исключаем гонку данных
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.counter = c.counter - c.reserveCounter
+	if c.counter < 0 {
+		c.counter = 0
+	}
+	c.reserveCounter = 0
 }

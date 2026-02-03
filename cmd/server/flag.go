@@ -12,19 +12,20 @@ type SetServer struct {
 	port int
 }
 
-func (s *SetServer) Set() error {
+func NewSetServer() (*SetServer, error) {
 	var addr string
+	server := &SetServer{}
 	flag.StringVar(&addr, "a", "localhost:8080", "server listen address")
 	flag.Parse()
 	args := strings.Split(addr, ":")
 	if len(args) != 2 {
-		return errors.New("invalid server address")
+		return nil, errors.New("invalid server address")
 	}
-	s.host = args[0]
+	server.host = args[0]
 	port, err := strconv.Atoi(args[1])
 	if err != nil {
-		return err
+		return nil, err
 	}
-	s.port = port
-	return nil
+	server.port = port
+	return server, nil
 }
