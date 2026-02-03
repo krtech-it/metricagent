@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"strconv"
@@ -24,7 +23,7 @@ func NewSetAgent() (*SetAgent, error) {
 	flag.Parse()
 	args := strings.Split(addr, ":")
 	if len(args) != 2 {
-		return nil, errors.New(fmt.Sprintf("invalid server address %s", addr))
+		return nil, fmt.Errorf("invalid server address %s", addr)
 	}
 	s.host = args[0]
 	port, err := strconv.Atoi(args[1])
