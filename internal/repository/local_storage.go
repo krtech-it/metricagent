@@ -1,0 +1,54 @@
+package repository
+
+import (
+	"fmt"
+	models "github.com/krtech-it/metricagent/internal/model"
+)
+
+type Storage interface {
+	Update(metric *models.Metrics) error
+	Create(metric *models.Metrics) error
+	Get(id string) (*models.Metrics, error)
+	GetAll() ([]*models.Metrics, error)
+}
+
+type MemStorage struct {
+	metrics map[string]*models.Metrics
+}
+
+func NewMemStorage() Storage {
+	return &MemStorage{
+		metrics: make(map[string]*models.Metrics),
+	}
+}
+
+func (m *MemStorage) Create(metric *models.Metrics) error {
+	if _, err := m.Get(metric.ID); err == nil {
+		return fmt.Errorf("metric %v already exists", metric.ID)
+	}
+	m.metrics[metric.ID] = metric
+	return nil
+}
+
+func (m *MemStorage) Update(metric *models.Metrics) error {
+	if _, err := m.Get(metric.ID); err != nil {
+		return fmt.Errorf("metric %v does not exist", metric.ID)
+	}
+	m.metrics[metric.ID] = metric
+	return nil
+}
+
+func (m *MemStorage) Get(ID string) (*models.Metrics, error) {
+	if metric, ok := m.metrics[ID]; ok {
+		return metric, nil
+	}
+	return nil, fmt.Errorf("metric %v does not exist", ID)
+}
+
+func (m *MemStorage) GetAll() ([]*models.Metrics, error) {
+	var metrics []*models.Metrics
+	for _, metric := range m.metrics {
+		metrics = append(metrics, metric)
+	}
+	return metrics, nil
+}
