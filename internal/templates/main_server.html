@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Metric Server</title>
+</head>
+<body>
+<h1>Метрики</h1>
+<ul>
+    {{ range . }}
+    <li>
+        ID: {{ .ID }},
+        Type: {{ .MType }},
+        {{ if .Delta }}
+        Delta: {{ .Delta }},
+        {{ end }}
+        {{ if .Value }}
+        Value: {{ .Value }},
+        {{ end }}
+    </li>
+    {{ end }}
+</ul>
+</body>
+</html>

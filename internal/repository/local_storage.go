@@ -37,3 +37,11 @@ func (m *MemStorage) Get(ID string) (*models.Metrics, error) {
 	}
 	return nil, fmt.Errorf("metric %v does not exist", ID)
 }
+
+func (m *MemStorage) GetAll() ([]*models.Metrics, error) {
+	var metrics []*models.Metrics
+	for _, metric := range m.metrics {
+		metrics = append(metrics, metric)
+	}
+	return metrics, nil
+}

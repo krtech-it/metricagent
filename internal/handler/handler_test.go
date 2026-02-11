@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/krtech-it/metricagent/internal/model"
 	"github.com/krtech-it/metricagent/internal/repository"
 	"github.com/krtech-it/metricagent/internal/service"
@@ -123,4 +124,99 @@ func TestUpdateMetricErrors(t *testing.T) {
 			assert.Equal(t, tt.wantStatus, res.StatusCode)
 		})
 	}
+}
+
+func TestGetMetric(t *testing.T) {
+	tests := []struct {
+		name       string
+		path       string
+		params     gin.Params
+		metricObj  *models.Metrics
+		wantStatus int
+		Value      float64
+		Delta      int64
+		wantValue  string
+	}{
+		{name: "test1",
+			path:       "/value/gauge/Alloc",
+			params:     gin.Params{{Key: "metricType", Value: "gauge"}, {Key: "ID", Value: "Alloc"}},
+			wantValue:  "12.2",
+			wantStatus: http.StatusOK,
+			Value:      12.20,
+			Delta:      0,
+			metricObj: &models.Metrics{
+				ID:    "Alloc",
+				MType: models.Gauge,
+			},
+		},
+		{name: "test2",
+			path:       "/value/counter/PollCount",
+			params:     gin.Params{{Key: "metricType", Value: "counter"}, {Key: "ID", Value: "PollCount"}},
+			wantValue:  "10",
+			wantStatus: http.StatusOK,
+			Value:      0,
+			Delta:      10,
+			metricObj: &models.Metrics{
+				ID:    "PollCount",
+				MType: models.Counter,
+			},
+		},
+		{name: "test3",
+			path:       "/value/counter/PollCount",
+			params:     gin.Params{{Key: "metricType", Value: "counter"}, {Key: "ID", Value: "PollCount"}},
+			wantValue:  "ID: PollCount does not exist",
+			wantStatus: http.StatusNotFound,
+			Value:      0,
+			Delta:      10,
+			metricObj: &models.Metrics{
+				ID:    "NotFound",
+				MType: models.Counter,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gin.SetMode(gin.TestMode)
+			h, storage := newTestHandler()
+			tt.metricObj.Value = &tt.Value
+			tt.metricObj.Delta = &tt.Delta
+			err := storage.Create(tt.metricObj)
+			require.NoError(t, err)
+
+			rec := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(rec)
+			c.Params = tt.params
+
+			c.Request = httptest.NewRequest(http.MethodGet, tt.path, nil)
+
+			h.GetMetric(c)
+
+			assert.Equal(t, tt.wantStatus, rec.Code)
+			assert.Equal(t, tt.wantValue, rec.Body.String())
+		})
+	}
+}
+
+func TestGetMainHTML(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	h, storage := newTestHandler()
+
+	value := 1.5
+	err := storage.Create(&models.Metrics{
+		ID:    "Alloc",
+		MType: models.Gauge,
+		Value: &value,
+	})
+	require.NoError(t, err)
+
+	router := gin.New()
+	router.LoadHTMLGlob("../templates/*")
+	router.GET("/", h.GetMainHTML)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Alloc")
 }
