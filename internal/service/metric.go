@@ -20,8 +20,7 @@ func (m *MetricUseCase) Update(metric *models.Metrics) error {
 		if err != nil {
 			m.storage.Create(metric)
 		} else {
-			delta := *metric.Delta
-			delta += *oldMetric.Delta
+			*metric.Delta += *oldMetric.Delta
 			return m.storage.Update(metric)
 		}
 	} else if metric.MType == models.Gauge {
