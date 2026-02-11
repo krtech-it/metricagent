@@ -41,12 +41,15 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("report interval is not int: %w", err)
 	}
-	cfg.ReportInterval = pollInt
+	cfg.PoolInterval = pollInt
 	reportInt, err := strconv.Atoi(reportStr)
 	if err != nil {
 		return nil, fmt.Errorf("report interval is not int: %w", err)
 	}
 	cfg.ReportInterval = reportInt
+	if cfg.PoolInterval == 0 || cfg.ReportInterval == 0 {
+		return nil, fmt.Errorf("report interval and report interval must be greater than zero")
+	}
 	return cfg, nil
 }
 
