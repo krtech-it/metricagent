@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newTestHandler() (*Handler, models.Storage) {
+func newTestHandler() (*Handler, repository.Storage) {
 	storage := repository.NewMemStorage()
 	metricUseCase := service.NewMetricUseCase(storage)
 	return NewHandler(metricUseCase), storage

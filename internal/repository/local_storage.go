@@ -5,11 +5,18 @@ import (
 	models "github.com/krtech-it/metricagent/internal/model"
 )
 
+type Storage interface {
+	Update(metric *models.Metrics) error
+	Create(metric *models.Metrics) error
+	Get(id string) (*models.Metrics, error)
+	GetAll() ([]*models.Metrics, error)
+}
+
 type MemStorage struct {
 	metrics map[string]*models.Metrics
 }
 
-func NewMemStorage() models.Storage {
+func NewMemStorage() Storage {
 	return &MemStorage{
 		metrics: make(map[string]*models.Metrics),
 	}

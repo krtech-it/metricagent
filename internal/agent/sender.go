@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"strconv"
 )
 
 var (
@@ -39,7 +40,7 @@ var (
 	}
 )
 
-func SendMetric(name string, value interface{}) error {
+func SendMetric(name string, value interface{}, host string) error {
 	var mType string
 	if slices.Contains(gaugeArea[:], name) {
 		mType = "gauge"
@@ -47,19 +48,19 @@ func SendMetric(name string, value interface{}) error {
 		mType = "counter"
 	}
 	var sendValue string
-	switch value.(type) {
+	switch v := value.(type) {
 	case uint64:
-		sendValue = fmt.Sprintf("%d", value)
+		sendValue = strconv.Itoa(int(v))
 	case float64:
-		sendValue = fmt.Sprintf("%f", value)
+		sendValue = strconv.FormatFloat(v, 'f', -1, 64)
 	case uint32:
-		sendValue = fmt.Sprintf("%d", value)
+		sendValue = strconv.Itoa(int(v))
 	case int64:
-		sendValue = fmt.Sprintf("%d", value)
+		sendValue = strconv.Itoa(int(v))
 	default:
 		return fmt.Errorf("ошибка создания url невалидное значение")
 	}
-	url := fmt.Sprintf("http://localhost:8080/update/%s/%s/%s", mType, name, sendValue)
+	url := fmt.Sprintf("http://%s/update/%s/%s/%s", host, mType, name, sendValue)
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		return err
