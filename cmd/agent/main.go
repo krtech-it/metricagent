@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+	config.ParseFlags()
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		log.Fatal(err)

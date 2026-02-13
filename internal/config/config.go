@@ -1,7 +1,6 @@
 package config
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"strconv"
@@ -17,11 +16,7 @@ type Config struct {
 
 func LoadConfig() (*Config, error) {
 	cfg := &Config{}
-	var (
-		addr = flag.String("a", "localhost:8080", "server listen address")
-	)
-	flag.Parse()
-	address := getEnv("ADDRESS", *addr)
+	address := getEnv("ADDRESS", FlagServer.addr)
 
 	args := strings.Split(address, ":")
 	if len(args) != 2 {
