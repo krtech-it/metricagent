@@ -12,6 +12,7 @@ type Config struct {
 	Port           int
 	ReportInterval int
 	PoolInterval   int
+	LogLevel       string
 }
 
 func LoadConfig() (*Config, error) {
@@ -28,6 +29,8 @@ func LoadConfig() (*Config, error) {
 		return nil, fmt.Errorf("port is not int: %w", err)
 	}
 	cfg.Port = port
+
+	cfg.LogLevel = getEnv("LOG_LEVEL", "info")
 	return cfg, nil
 }
 
