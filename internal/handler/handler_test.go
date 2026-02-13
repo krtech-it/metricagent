@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"github.com/krtech-it/metricagent/internal/logger"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,7 +17,8 @@ import (
 func newTestHandler() (*Handler, repository.Storage) {
 	storage := repository.NewMemStorage()
 	metricUseCase := service.NewMetricUseCase(storage)
-	return NewHandler(metricUseCase), storage
+	logger.Initialize("info")
+	return NewHandler(metricUseCase, logger.Log), storage
 }
 
 func TestUpdateMetricGaugeOK(t *testing.T) {
