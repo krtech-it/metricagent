@@ -15,18 +15,6 @@ type ResponseGetMetric struct {
 	Value interface{} `json:"value"`
 }
 
-//func (r *RequestGetMetric) MarshalJSON() error {
-//	type MetricAlias RequestGetMetric
-//
-//	aliasMetric := struct {
-//		MetricAlias
-//		Value interface{} `json:"value"`
-//	}{
-//		MetricAlias: (MetricAlias)(*r),
-//
-//	}
-//}
-
 type MainMetric struct {
 	ID    string `json:"id"`
 	MType string `json:"type"`

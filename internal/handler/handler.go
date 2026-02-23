@@ -174,12 +174,6 @@ func (h *Handler) GetMetricJSON(c *gin.Context) {
 	} else if dtoMetric.MType == models.Gauge {
 		respMetric.Value = *metric.Value
 	}
-	//resp, err := json.Marshal(respMetric)
-	//if err != nil {
-	//	h.logger.Info("failed to marshal metric", zap.Error(err))
-	//	c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to marshal metric"})
-	//	return
-	//}
 	c.JSON(http.StatusOK, respMetric)
 }
 
