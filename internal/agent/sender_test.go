@@ -30,7 +30,7 @@ func TestSendMetric(t *testing.T) {
 		url   string
 	}{
 		{name: "Alloc", value: 45.34, url: "/update/gauge/Alloc/45.34"},
-		{name: "PoollCount", value: int64(1), url: "/update/counter/PoollCount/1"},
+		{name: "PollCount", value: int64(1), url: "/update/counter/PollCount/1"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
