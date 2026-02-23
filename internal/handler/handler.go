@@ -73,7 +73,7 @@ func (h *Handler) UpdateMetricJSON(c *gin.Context) {
 		return
 	}
 	c.Header("Content-Type", "application/json")
-	c.Status(http.StatusOK)
+	c.JSON(http.StatusOK, dtoMetric)
 }
 
 func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
@@ -183,6 +183,7 @@ func (h *Handler) GetMetric(c *gin.Context) {
 	ID := c.Param("ID")
 	if metricType != models.Gauge && metricType != models.Counter {
 		c.String(http.StatusNotFound, "invalid path")
+		return
 	}
 	metric, err := h.metricUseCase.GetMetric(ID)
 	if err != nil {
