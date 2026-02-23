@@ -56,7 +56,7 @@ func (c *Collector) Add() {
 	c.storage["TotalAlloc"] = memStats.TotalAlloc
 
 	c.counter++
-	c.storage["PoolCount"] = c.counter
+	c.storage["PoollCount"] = c.counter
 	c.storage["RandomValue"] = rand.Float64()
 	c.mu.Unlock()
 }

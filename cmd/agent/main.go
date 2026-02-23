@@ -35,7 +35,7 @@ func main() {
 				err := agent.SendMetricJSON(name, value, cfg.Host+":"+strconv.Itoa(cfg.Port))
 				if err != nil {
 					log.Printf("error send metric: %s \n", err)
-					if name == "PoolCount" {
+					if name == "PoollCount" {
 						errFlag = true
 						break
 					}
