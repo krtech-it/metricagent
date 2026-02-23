@@ -109,6 +109,9 @@ func SendMetricJSON(name string, value interface{}, host string) error {
 	requestMetric.ID = name
 	url := fmt.Sprintf("http://%s/update/", host)
 	body, err := json.Marshal(requestMetric)
+	if err != nil {
+		return err
+	}
 	req, err := http.NewRequest("POST", url, bytes.NewReader(body))
 	if err != nil {
 		return err
