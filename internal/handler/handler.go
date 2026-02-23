@@ -153,6 +153,7 @@ func (h *Handler) GetMetricJSON(c *gin.Context) {
 
 	if dtoMetric.MType != models.Gauge && dtoMetric.MType != models.Counter {
 		c.String(http.StatusNotFound, "invalid path")
+		return
 	}
 	metric, err := h.metricUseCase.GetMetric(dtoMetric.ID)
 	if err != nil {
@@ -170,9 +171,9 @@ func (h *Handler) GetMetricJSON(c *gin.Context) {
 		},
 	}
 	if dtoMetric.MType == models.Counter {
-		respMetric.Value = *metric.Delta
+		respMetric.Delta = metric.Delta
 	} else if dtoMetric.MType == models.Gauge {
-		respMetric.Value = *metric.Value
+		respMetric.Value = metric.Value
 	}
 	c.JSON(http.StatusOK, respMetric)
 }

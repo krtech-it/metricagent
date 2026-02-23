@@ -12,7 +12,8 @@ type RequestGetMetric struct {
 
 type ResponseGetMetric struct {
 	MainMetric
-	Value interface{} `json:"value"`
+	Value *float64 `json:"value,omitempty"`
+	Delta *int64   `json:"delta,omitempty"`
 }
 
 type MainMetric struct {
