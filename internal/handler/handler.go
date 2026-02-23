@@ -1,10 +1,13 @@
 package handler
 
 import (
+	"encoding/json"
 	"github.com/gin-gonic/gin"
+	dto_model "github.com/krtech-it/metricagent/internal/delivery/http/dto"
 	models "github.com/krtech-it/metricagent/internal/model"
 	"github.com/krtech-it/metricagent/internal/service"
 	"go.uber.org/zap"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -20,6 +23,57 @@ func NewHandler(metricUseCase *service.MetricUseCase, logger *zap.Logger) *Handl
 		metricUseCase: metricUseCase,
 		logger:        logger,
 	}
+}
+
+func (h *Handler) UpdateMetricJSON(c *gin.Context) {
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		h.logger.Info("failed to read body", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read body"})
+		return
+	}
+	var dtoMetric dto_model.RequestUpdateMetric
+	if err := json.Unmarshal(body, &dtoMetric); err != nil {
+		h.logger.Info("failed to parse body", zap.Error(err))
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "failed to unmarshal body"})
+		return
+	}
+
+	if !(dtoMetric.MType == models.Gauge || dtoMetric.MType == models.Counter) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid metric type"})
+		return
+	}
+	if dtoMetric.ID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid metric id"})
+		return
+	}
+
+	var metric *models.Metrics
+
+	if dtoMetric.MType == models.Counter {
+		metric = &models.Metrics{
+			ID:    dtoMetric.ID,
+			MType: dtoMetric.MType,
+			Delta: dtoMetric.Delta,
+			Value: nil,
+			Hash:  "",
+		}
+	} else if dtoMetric.MType == models.Gauge {
+		metric = &models.Metrics{
+			ID:    dtoMetric.ID,
+			MType: dtoMetric.MType,
+			Value: dtoMetric.Value,
+			Delta: nil,
+			Hash:  "",
+		}
+	}
+	if err := h.metricUseCase.Update(metric); err != nil {
+		h.logger.Error("failed to update metric", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to update metric"})
+		return
+	}
+	c.Header("Content-Type", "application/json")
+	c.Status(http.StatusOK)
 }
 
 func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
@@ -81,6 +135,52 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) GetMetricJSON(c *gin.Context) {
+	req, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		h.logger.Info("failed to read body", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read body"})
+		return
+	}
+	var dtoMetric dto_model.RequestGetMetric
+	if err := json.Unmarshal(req, &dtoMetric); err != nil {
+		h.logger.Info("failed to parse body", zap.Error(err))
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "failed to unmarshal body"})
+		return
+	}
+
+	if dtoMetric.MType != models.Gauge && dtoMetric.MType != models.Counter {
+		c.String(http.StatusNotFound, "invalid path")
+	}
+	metric, err := h.metricUseCase.GetMetric(dtoMetric.ID)
+	if err != nil {
+		c.String(http.StatusNotFound, "ID: %s does not exist", dtoMetric.ID)
+		return
+	}
+	if metric.MType != dtoMetric.MType {
+		c.String(http.StatusBadRequest, "invalid path")
+		return
+	}
+	respMetric := dto_model.ResponseGetMetric{
+		MainMetric: dto_model.MainMetric{
+			ID:    dtoMetric.ID,
+			MType: dtoMetric.MType,
+		},
+	}
+	if dtoMetric.MType == models.Counter {
+		respMetric.Value = *metric.Delta
+	} else if dtoMetric.MType == models.Gauge {
+		respMetric.Value = *metric.Value
+	}
+	//resp, err := json.Marshal(respMetric)
+	//if err != nil {
+	//	h.logger.Info("failed to marshal metric", zap.Error(err))
+	//	c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to marshal metric"})
+	//	return
+	//}
+	c.JSON(http.StatusOK, respMetric)
 }
 
 func (h *Handler) GetMetric(c *gin.Context) {
