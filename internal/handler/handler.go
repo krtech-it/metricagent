@@ -1,14 +1,10 @@
 package handler
 
 import (
-	"encoding/json"
 	"github.com/gin-gonic/gin"
-	"github.com/krtech-it/metricagent/internal/config"
-	dto_model "github.com/krtech-it/metricagent/internal/delivery/http/dto"
 	models "github.com/krtech-it/metricagent/internal/model"
 	"github.com/krtech-it/metricagent/internal/service"
-	"go.uber.org/zap"
-	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -16,67 +12,12 @@ import (
 
 type Handler struct {
 	metricUseCase *service.MetricUseCase
-	logger        *zap.Logger
-	cfg           *config.Config
 }
 
-func NewHandler(metricUseCase *service.MetricUseCase, logger *zap.Logger, cfg *config.Config) *Handler {
+func NewHandler(metricUseCase *service.MetricUseCase) *Handler {
 	return &Handler{
 		metricUseCase: metricUseCase,
-		logger:        logger,
-		cfg:           cfg,
 	}
-}
-
-func (h *Handler) UpdateMetricJSON(c *gin.Context) {
-	body, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		h.logger.Info("failed to read body", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read body"})
-		return
-	}
-	var dtoMetric dto_model.RequestUpdateMetric
-	if err := json.Unmarshal(body, &dtoMetric); err != nil {
-		h.logger.Info("failed to parse body", zap.Error(err))
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "failed to unmarshal body"})
-		return
-	}
-
-	if !(dtoMetric.MType == models.Gauge || dtoMetric.MType == models.Counter) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid metric type"})
-		return
-	}
-	if dtoMetric.ID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid metric id"})
-		return
-	}
-
-	var metric *models.Metrics
-
-	if dtoMetric.MType == models.Counter {
-		metric = &models.Metrics{
-			ID:    dtoMetric.ID,
-			MType: dtoMetric.MType,
-			Delta: dtoMetric.Delta,
-			Value: nil,
-			Hash:  "",
-		}
-	} else if dtoMetric.MType == models.Gauge {
-		metric = &models.Metrics{
-			ID:    dtoMetric.ID,
-			MType: dtoMetric.MType,
-			Value: dtoMetric.Value,
-			Delta: nil,
-			Hash:  "",
-		}
-	}
-	if err := h.metricUseCase.Update(metric); err != nil {
-		h.logger.Error("failed to update metric", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to update metric"})
-		return
-	}
-	c.Header("Content-Type", "application/json")
-	c.JSON(http.StatusOK, dtoMetric)
 }
 
 func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
@@ -140,53 +81,11 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *Handler) GetMetricJSON(c *gin.Context) {
-	req, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		h.logger.Info("failed to read body", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read body"})
-		return
-	}
-	var dtoMetric dto_model.RequestGetMetric
-	if err := json.Unmarshal(req, &dtoMetric); err != nil {
-		h.logger.Info("failed to parse body", zap.Error(err))
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "failed to unmarshal body"})
-		return
-	}
-
-	if dtoMetric.MType != models.Gauge && dtoMetric.MType != models.Counter {
-		c.String(http.StatusNotFound, "invalid path")
-		return
-	}
-	metric, err := h.metricUseCase.GetMetric(dtoMetric.ID)
-	if err != nil {
-		c.String(http.StatusNotFound, "ID: %s does not exist", dtoMetric.ID)
-		return
-	}
-	if metric.MType != dtoMetric.MType {
-		c.String(http.StatusBadRequest, "invalid path")
-		return
-	}
-	respMetric := dto_model.ResponseGetMetric{
-		MainMetric: dto_model.MainMetric{
-			ID:    dtoMetric.ID,
-			MType: dtoMetric.MType,
-		},
-	}
-	if dtoMetric.MType == models.Counter {
-		respMetric.Delta = metric.Delta
-	} else if dtoMetric.MType == models.Gauge {
-		respMetric.Value = metric.Value
-	}
-	c.JSON(http.StatusOK, respMetric)
-}
-
 func (h *Handler) GetMetric(c *gin.Context) {
 	metricType := c.Param("metricType")
 	ID := c.Param("ID")
 	if metricType != models.Gauge && metricType != models.Counter {
 		c.String(http.StatusNotFound, "invalid path")
-		return
 	}
 	metric, err := h.metricUseCase.GetMetric(ID)
 	if err != nil {
@@ -212,7 +111,7 @@ func (h *Handler) GetMetric(c *gin.Context) {
 func (h *Handler) GetMainHTML(c *gin.Context) {
 	metrics, err := h.metricUseCase.GetAllMetrics()
 	if err != nil {
-		h.logger.Error("handler: GetMainHTML", zap.Error(err))
+		log.Printf("handler: GetMainHTML, error: %s \n", err)
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}

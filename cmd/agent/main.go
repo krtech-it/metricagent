@@ -2,21 +2,19 @@ package main
 
 import (
 	"github.com/krtech-it/metricagent/internal/agent"
-	"github.com/krtech-it/metricagent/internal/agent/config"
 	"log"
 	"strconv"
 	"time"
 )
 
 func main() {
-	config.ParseFlags()
-	cfg, err := config.LoadConfig()
+	setAgent, err := NewSetAgent()
 	if err != nil {
 		log.Fatal(err)
 	}
 	collector := agent.NewCollector()
-	tickerPool := time.NewTicker(time.Duration(cfg.PoolInterval) * time.Second)
-	tickerReport := time.NewTicker(time.Duration(cfg.ReportInterval) * time.Second)
+	tickerPool := time.NewTicker(time.Duration(setAgent.pollInterval) * time.Second)
+	tickerReport := time.NewTicker(time.Duration(setAgent.reportInterval) * time.Second)
 	done := make(chan bool)
 
 	defer tickerPool.Stop()
@@ -32,10 +30,10 @@ func main() {
 		case <-tickerReport.C:
 			errFlag := false
 			for name, value := range collector.CopyStorage() {
-				err := agent.SendMetricJSON(name, value, cfg.Host+":"+strconv.Itoa(cfg.Port))
+				err := agent.SendMetric(name, value, setAgent.host+":"+strconv.Itoa(setAgent.port))
 				if err != nil {
 					log.Printf("error send metric: %s \n", err)
-					if name == "PollCount" {
+					if name == "PoolCount" {
 						errFlag = true
 						break
 					}
