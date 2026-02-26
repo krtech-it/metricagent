@@ -2,6 +2,7 @@ package agent
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	models "github.com/krtech-it/metricagent/internal/agent/dto"
@@ -112,12 +113,21 @@ func SendMetricJSON(name string, value interface{}, host string) error {
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest("POST", url, bytes.NewReader(body))
+	var gzBuf bytes.Buffer
+	gz := gzip.NewWriter(&gzBuf)
+	if _, err := gz.Write(body); err != nil {
+		return err
+	}
+	if err := gz.Close(); err != nil {
+		return err
+	}
+	req, err := http.NewRequest("POST", url, &gzBuf)
 	if err != nil {
 		return err
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Encoding", "gzip")
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
