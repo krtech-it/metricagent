@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"github.com/krtech-it/metricagent/internal/config"
 	dto_model "github.com/krtech-it/metricagent/internal/delivery/http/dto"
 	models "github.com/krtech-it/metricagent/internal/model"
 	"github.com/krtech-it/metricagent/internal/service"
@@ -16,12 +17,14 @@ import (
 type Handler struct {
 	metricUseCase *service.MetricUseCase
 	logger        *zap.Logger
+	cfg           *config.Config
 }
 
-func NewHandler(metricUseCase *service.MetricUseCase, logger *zap.Logger) *Handler {
+func NewHandler(metricUseCase *service.MetricUseCase, logger *zap.Logger, cfg *config.Config) *Handler {
 	return &Handler{
 		metricUseCase: metricUseCase,
 		logger:        logger,
+		cfg:           cfg,
 	}
 }
 

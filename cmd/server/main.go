@@ -18,7 +18,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	router := delivery.NewRouter(logger.Log)
+	router := delivery.NewRouter(logger.Log, cfg)
 	logger.Log.Info("Listening on port " + strconv.Itoa(cfg.Port))
 	err = router.Run(cfg.Host + ":" + strconv.Itoa(cfg.Port))
 	if err != nil {
