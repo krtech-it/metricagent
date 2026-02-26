@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	models "github.com/krtech-it/metricagent/internal/model"
 	"github.com/krtech-it/metricagent/internal/service"
-	"log"
+	"go.uber.org/zap"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,11 +12,13 @@ import (
 
 type Handler struct {
 	metricUseCase *service.MetricUseCase
+	logger        *zap.Logger
 }
 
-func NewHandler(metricUseCase *service.MetricUseCase) *Handler {
+func NewHandler(metricUseCase *service.MetricUseCase, logger *zap.Logger) *Handler {
 	return &Handler{
 		metricUseCase: metricUseCase,
+		logger:        logger,
 	}
 }
 
@@ -111,7 +113,7 @@ func (h *Handler) GetMetric(c *gin.Context) {
 func (h *Handler) GetMainHTML(c *gin.Context) {
 	metrics, err := h.metricUseCase.GetAllMetrics()
 	if err != nil {
-		log.Printf("handler: GetMainHTML, error: %s \n", err)
+		h.logger.Error("handler: GetMainHTML", zap.Error(err))
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
