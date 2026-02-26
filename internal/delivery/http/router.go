@@ -18,7 +18,9 @@ func NewRouter(logger *zap.Logger) *gin.Engine {
 
 	h := handler.NewHandler(metricUseCase, logger)
 	r.LoadHTMLGlob("internal/templates/*")
+	r.POST("/update/", h.UpdateMetricJSON)
 	r.POST("/update/:metricType/:ID/:value", gin.WrapF(h.UpdateMetric))
+	r.POST("/value/", h.GetMetricJSON)
 	r.GET("/value/:metricType/:ID", h.GetMetric)
 	r.GET("/", h.GetMainHTML)
 
