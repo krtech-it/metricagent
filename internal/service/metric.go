@@ -10,12 +10,12 @@ import (
 
 type MetricUseCase struct {
 	storage    repository.Storage
-	backup     *backuper.Backuper
+	backup     backuper.BackupInterface
 	cfg        *config.Config
 	flagBackup bool
 }
 
-func NewMetricUseCase(storage repository.Storage, backup *backuper.Backuper, cfg *config.Config) *MetricUseCase {
+func NewMetricUseCase(storage repository.Storage, backup backuper.BackupInterface, cfg *config.Config) *MetricUseCase {
 	return &MetricUseCase{
 		storage:    storage,
 		backup:     backup,

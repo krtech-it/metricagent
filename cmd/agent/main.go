@@ -15,7 +15,7 @@ func main() {
 		log.Fatal(err)
 	}
 	collector := agent.NewCollector()
-	tickerPool := time.NewTicker(time.Duration(cfg.PoolInterval) * time.Second)
+	tickerPool := time.NewTicker(time.Duration(cfg.PollInterval) * time.Second)
 	tickerReport := time.NewTicker(time.Duration(cfg.ReportInterval) * time.Second)
 	done := make(chan bool)
 

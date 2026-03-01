@@ -11,7 +11,7 @@ type Config struct {
 	Host            string
 	Port            int
 	ReportInterval  int
-	PoolInterval    int
+	PollInterval    int
 	LogLevel        string
 	StoreInterval   int
 	FileStoragePath string

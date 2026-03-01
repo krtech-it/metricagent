@@ -7,6 +7,11 @@ import (
 	"os"
 )
 
+type BackupInterface interface {
+	WriteEvent(metrics []*dto.ResponseGetMetric) error
+	ReadEvent() ([]*dto.ResponseGetMetric, error)
+}
+
 type Backuper struct {
 	file    *os.File
 	encoder *json.Encoder
@@ -14,7 +19,7 @@ type Backuper struct {
 	logger  *zap.Logger
 }
 
-func NewBackuper(fileName string, logger *zap.Logger) (*Backuper, error) {
+func NewBackuper(fileName string, logger *zap.Logger) (BackupInterface, error) {
 	file, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		return nil, err

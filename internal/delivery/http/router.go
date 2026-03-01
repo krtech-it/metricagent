@@ -15,7 +15,10 @@ import (
 func NewRouter(logger *zap.Logger, cfg *config.Config) *gin.Engine {
 	r := gin.Default()
 	storage := repository.NewMemStorage()
-	backupService, _ := backuper.NewBackuper(cfg.FileStoragePath, logger)
+	backupService, err := backuper.NewBackuper(cfg.FileStoragePath, logger)
+	if err != nil {
+		logger.Error("failed to init backup service", zap.Error(err))
+	}
 	metricUseCase := service.NewMetricUseCase(storage, backupService, cfg)
 
 	if cfg.Restore {

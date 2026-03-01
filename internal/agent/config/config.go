@@ -11,7 +11,7 @@ type Config struct {
 	Host           string
 	Port           int
 	ReportInterval int
-	PoolInterval   int
+	PollInterval   int
 }
 
 func LoadConfig() (*Config, error) {
@@ -35,14 +35,14 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("poll interval is not int: %w", err)
 	}
-	cfg.PoolInterval = pollInt
+	cfg.PollInterval = pollInt
 	reportInt, err := strconv.Atoi(reportStr)
 	if err != nil {
 		return nil, fmt.Errorf("report interval is not int: %w", err)
 	}
 	cfg.ReportInterval = reportInt
-	if cfg.PoolInterval == 0 || cfg.ReportInterval == 0 {
-		return nil, fmt.Errorf("report interval and report interval must be greater than zero")
+	if cfg.PollInterval == 0 || cfg.ReportInterval == 0 {
+		return nil, fmt.Errorf("poll interval and report interval must be greater than zero\"")
 	}
 	return cfg, nil
 }
