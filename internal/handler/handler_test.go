@@ -3,9 +3,13 @@ package handler
 import (
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/krtech-it/metricagent/internal/backuper"
+	"github.com/krtech-it/metricagent/internal/config"
+	"github.com/krtech-it/metricagent/internal/logger"
 	"github.com/krtech-it/metricagent/internal/model"
 	"github.com/krtech-it/metricagent/internal/repository"
 	"github.com/krtech-it/metricagent/internal/service"
@@ -13,14 +17,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newTestHandler() (*Handler, repository.Storage) {
+func newTestHandler(t *testing.T) (*Handler, repository.Storage) {
 	storage := repository.NewMemStorage()
-	metricUseCase := service.NewMetricUseCase(storage)
-	return NewHandler(metricUseCase), storage
+	logger.Initialize("info")
+	cfg := &config.Config{
+		StoreInterval: 1,
+	}
+	backupPath := filepath.Join(t.TempDir(), "test_storage.json")
+	backup, err := backuper.NewBackuper(backupPath, logger.Log)
+	if err != nil {
+		t.Fatalf("failed to create backuper: %v", err)
+	}
+	metricUseCase := service.NewMetricUseCase(storage, backup, cfg)
+	return NewHandler(metricUseCase, logger.Log, cfg), storage
 }
 
 func TestUpdateMetricGaugeOK(t *testing.T) {
-	h, storage := newTestHandler()
+	h, storage := newTestHandler(t)
 
 	req := httptest.NewRequest(http.MethodPost, "/update/gauge/Alloc/123.5", nil)
 	rec := httptest.NewRecorder()
@@ -40,7 +53,7 @@ func TestUpdateMetricGaugeOK(t *testing.T) {
 }
 
 func TestUpdateMetricCounterAccumulates(t *testing.T) {
-	h, storage := newTestHandler()
+	h, storage := newTestHandler(t)
 
 	req1 := httptest.NewRequest(http.MethodPost, "/update/counter/PollCount/5", nil)
 	rec1 := httptest.NewRecorder()
@@ -65,7 +78,7 @@ func TestUpdateMetricCounterAccumulates(t *testing.T) {
 }
 
 func TestUpdateMetricErrors(t *testing.T) {
-	h, _ := newTestHandler()
+	h, _ := newTestHandler(t)
 
 	tests := []struct {
 		name       string
@@ -177,7 +190,7 @@ func TestGetMetric(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gin.SetMode(gin.TestMode)
-			h, storage := newTestHandler()
+			h, storage := newTestHandler(t)
 			tt.metricObj.Value = &tt.Value
 			tt.metricObj.Delta = &tt.Delta
 			err := storage.Create(tt.metricObj)
@@ -199,7 +212,7 @@ func TestGetMetric(t *testing.T) {
 
 func TestGetMainHTML(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	h, storage := newTestHandler()
+	h, storage := newTestHandler(t)
 
 	value := 1.5
 	err := storage.Create(&models.Metrics{

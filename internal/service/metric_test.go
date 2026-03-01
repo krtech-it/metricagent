@@ -3,6 +3,7 @@ package service
 import (
 	"testing"
 
+	"github.com/krtech-it/metricagent/internal/config"
 	models "github.com/krtech-it/metricagent/internal/model"
 	"github.com/krtech-it/metricagent/internal/repository"
 	"github.com/stretchr/testify/assert"
@@ -11,7 +12,8 @@ import (
 
 func TestMetricUseCase_UpdateCounterAccumulates(t *testing.T) {
 	storage := repository.NewMemStorage()
-	useCase := NewMetricUseCase(storage)
+	cfg := &config.Config{StoreInterval: 1}
+	useCase := NewMetricUseCase(storage, nil, cfg)
 
 	first := int64(5)
 	err := useCase.Update(&models.Metrics{
@@ -37,7 +39,8 @@ func TestMetricUseCase_UpdateCounterAccumulates(t *testing.T) {
 
 func TestMetricUseCase_UpdateGaugeReplaces(t *testing.T) {
 	storage := repository.NewMemStorage()
-	useCase := NewMetricUseCase(storage)
+	cfg := &config.Config{StoreInterval: 1}
+	useCase := NewMetricUseCase(storage, nil, cfg)
 
 	first := 1.5
 	err := useCase.Update(&models.Metrics{
@@ -63,7 +66,8 @@ func TestMetricUseCase_UpdateGaugeReplaces(t *testing.T) {
 
 func TestMetricUseCase_UpdateCreatesWhenMissing(t *testing.T) {
 	storage := repository.NewMemStorage()
-	useCase := NewMetricUseCase(storage)
+	cfg := &config.Config{StoreInterval: 1}
+	useCase := NewMetricUseCase(storage, nil, cfg)
 
 	value := 10.0
 	err := useCase.Update(&models.Metrics{
