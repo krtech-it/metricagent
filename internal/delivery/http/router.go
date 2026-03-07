@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	"database/sql"
 	"github.com/gin-gonic/gin"
 	"github.com/krtech-it/metricagent/internal/backuper"
 	"github.com/krtech-it/metricagent/internal/config"
@@ -12,9 +13,9 @@ import (
 	"time"
 )
 
-func NewRouter(logger *zap.Logger, cfg *config.Config) *gin.Engine {
+func NewRouter(logger *zap.Logger, cfg *config.Config, db *sql.DB) *gin.Engine {
 	r := gin.Default()
-	storage := repository.NewMemStorage()
+	storage := repository.NewMemStorage(db)
 	backupService, err := backuper.NewBackuper(cfg.FileStoragePath, logger)
 	if err != nil {
 		logger.Error("failed to init backup service", zap.Error(err))
@@ -43,6 +44,7 @@ func NewRouter(logger *zap.Logger, cfg *config.Config) *gin.Engine {
 
 	h := handler.NewHandler(metricUseCase, logger, cfg)
 	r.LoadHTMLGlob("internal/templates/*")
+	r.GET("/ping", h.Ping)
 	r.POST("/update/", h.UpdateMetricJSON)
 	r.POST("/update/:metricType/:ID/:value", gin.WrapF(h.UpdateMetric))
 	r.POST("/value/", h.GetMetricJSON)

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/gin-gonic/gin"
 	"github.com/krtech-it/metricagent/internal/backuper"
 	"github.com/krtech-it/metricagent/internal/config"
 	"github.com/krtech-it/metricagent/internal/delivery/http/dto"
@@ -101,4 +102,8 @@ func (m *MetricUseCase) ReadBackupAllMetrics() error {
 	}
 	m.flagBackup = true
 	return nil
+}
+
+func (m *MetricUseCase) Ping(ctx *gin.Context) error {
+	return m.storage.Ping(ctx)
 }
