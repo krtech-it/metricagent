@@ -22,14 +22,24 @@ func NewRouter(logger *zap.Logger, cfg *config.Config, db *sql.DB) *gin.Engine {
 	} else {
 		storage = repository.NewMemStorage(nil)
 	}
+
+	switch {
+	case db != nil:
+		cfg.TypeDB = "postgres"
+	case cfg.FileStoragePath != "":
+		cfg.TypeDB = "file"
+	default:
+		cfg.TypeDB = "memory"
+	}
+
 	backupService, err := backuper.NewBackuper(cfg.FileStoragePath, logger)
 	if err != nil {
 		logger.Error("failed to init backup service", zap.Error(err))
 	}
 	metricUseCase := service.NewMetricUseCase(storage, backupService, cfg)
 
-	if db == nil {
-		if cfg.FileStoragePath != "" {
+	if cfg.TypeDB != "postgres" {
+		if cfg.TypeDB == "file" {
 
 			if cfg.Restore {
 				if err := metricUseCase.ReadBackupAllMetrics(context.Background()); err != nil {

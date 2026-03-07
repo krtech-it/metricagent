@@ -40,7 +40,7 @@ func (m *MetricUseCase) Update(ctx context.Context, metric *models.Metrics) erro
 			errResult = m.storage.Create(ctx, metric)
 		}
 	}
-	if m.flagBackup && m.cfg.StoreInterval == 0 {
+	if m.flagBackup && m.cfg.StoreInterval == 0 && m.cfg.TypeDB == "file" {
 		if err := m.WriteBackupAllMetrics(ctx); err != nil {
 			return err
 		}
