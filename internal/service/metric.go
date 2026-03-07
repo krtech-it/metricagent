@@ -1,7 +1,7 @@
 package service
 
 import (
-	"github.com/gin-gonic/gin"
+	"context"
 	"github.com/krtech-it/metricagent/internal/backuper"
 	"github.com/krtech-it/metricagent/internal/config"
 	"github.com/krtech-it/metricagent/internal/delivery/http/dto"
@@ -25,39 +25,39 @@ func NewMetricUseCase(storage repository.Storage, backup backuper.BackupInterfac
 	}
 }
 
-func (m *MetricUseCase) Update(metric *models.Metrics) error {
+func (m *MetricUseCase) Update(ctx context.Context, metric *models.Metrics) error {
 	var errResult error
 	if metric.MType == models.Counter {
-		oldMetric, err := m.storage.Get(metric.ID)
+		oldMetric, err := m.storage.Get(ctx, metric.ID)
 		if err != nil {
-			errResult = m.storage.Create(metric)
+			errResult = m.storage.Create(ctx, metric)
 		} else {
 			*metric.Delta += *oldMetric.Delta
-			errResult = m.storage.Update(metric)
+			errResult = m.storage.Update(ctx, metric)
 		}
 	} else if metric.MType == models.Gauge {
-		if m.storage.Update(metric) != nil {
-			errResult = m.storage.Create(metric)
+		if m.storage.Update(ctx, metric) != nil {
+			errResult = m.storage.Create(ctx, metric)
 		}
 	}
 	if m.flagBackup && m.cfg.StoreInterval == 0 {
-		if err := m.WriteBackupAllMetrics(); err != nil {
+		if err := m.WriteBackupAllMetrics(ctx); err != nil {
 			return err
 		}
 	}
 	return errResult
 }
 
-func (m *MetricUseCase) GetMetric(ID string) (*models.Metrics, error) {
-	return m.storage.Get(ID)
+func (m *MetricUseCase) GetMetric(ctx context.Context, ID string) (*models.Metrics, error) {
+	return m.storage.Get(ctx, ID)
 }
 
-func (m *MetricUseCase) GetAllMetrics() ([]*models.Metrics, error) {
-	return m.storage.GetAll()
+func (m *MetricUseCase) GetAllMetrics(ctx context.Context) ([]*models.Metrics, error) {
+	return m.storage.GetAll(ctx)
 }
 
-func (m *MetricUseCase) WriteBackupAllMetrics() error {
-	allMetrics, err := m.storage.GetAll()
+func (m *MetricUseCase) WriteBackupAllMetrics(ctx context.Context) error {
+	allMetrics, err := m.storage.GetAll(ctx)
 	if err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ func (m *MetricUseCase) WriteBackupAllMetrics() error {
 	return m.backup.WriteEvent(metrics)
 }
 
-func (m *MetricUseCase) ReadBackupAllMetrics() error {
+func (m *MetricUseCase) ReadBackupAllMetrics(ctx context.Context) error {
 	m.flagBackup = false
 	allMetrics, err := m.backup.ReadEvent()
 	if err != nil {
@@ -98,12 +98,12 @@ func (m *MetricUseCase) ReadBackupAllMetrics() error {
 			metricStorage.Value = metric.Value
 			metricStorage.Delta = nil
 		}
-		_ = m.Update(&metricStorage)
+		_ = m.Update(ctx, &metricStorage)
 	}
 	m.flagBackup = true
 	return nil
 }
 
-func (m *MetricUseCase) Ping(ctx *gin.Context) error {
+func (m *MetricUseCase) Ping(ctx context.Context) error {
 	return m.storage.Ping(ctx)
 }

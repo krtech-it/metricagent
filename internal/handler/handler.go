@@ -71,7 +71,7 @@ func (h *Handler) UpdateMetricJSON(c *gin.Context) {
 			Hash:  "",
 		}
 	}
-	if err := h.metricUseCase.Update(metric); err != nil {
+	if err := h.metricUseCase.Update(c.Request.Context(), metric); err != nil {
 		h.logger.Error("failed to update metric", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to update metric"})
 		return
@@ -133,7 +133,7 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 			Hash:  "",
 		}
 	}
-	if err := h.metricUseCase.Update(metric); err != nil {
+	if err := h.metricUseCase.Update(r.Context(), metric); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
@@ -159,7 +159,7 @@ func (h *Handler) GetMetricJSON(c *gin.Context) {
 		c.String(http.StatusNotFound, "invalid path")
 		return
 	}
-	metric, err := h.metricUseCase.GetMetric(dtoMetric.ID)
+	metric, err := h.metricUseCase.GetMetric(c.Request.Context(), dtoMetric.ID)
 	if err != nil {
 		c.String(http.StatusNotFound, "ID: %s does not exist", dtoMetric.ID)
 		return
@@ -189,7 +189,7 @@ func (h *Handler) GetMetric(c *gin.Context) {
 		c.String(http.StatusNotFound, "invalid path")
 		return
 	}
-	metric, err := h.metricUseCase.GetMetric(ID)
+	metric, err := h.metricUseCase.GetMetric(c.Request.Context(), ID)
 	if err != nil {
 		c.String(http.StatusNotFound, "ID: %s does not exist", ID)
 		return
@@ -211,7 +211,7 @@ func (h *Handler) GetMetric(c *gin.Context) {
 }
 
 func (h *Handler) GetMainHTML(c *gin.Context) {
-	metrics, err := h.metricUseCase.GetAllMetrics()
+	metrics, err := h.metricUseCase.GetAllMetrics(c.Request.Context())
 	if err != nil {
 		h.logger.Error("handler: GetMainHTML", zap.Error(err))
 		c.AbortWithStatus(http.StatusInternalServerError)
@@ -221,7 +221,7 @@ func (h *Handler) GetMainHTML(c *gin.Context) {
 }
 
 func (h *Handler) Ping(c *gin.Context) {
-	if err := h.metricUseCase.Ping(c); err != nil {
+	if err := h.metricUseCase.Ping(c.Request.Context()); err != nil {
 		logger.Error("handler: Ping", zap.Error(err))
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
