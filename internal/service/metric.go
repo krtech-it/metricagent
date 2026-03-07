@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/gin-gonic/gin"
 	"github.com/krtech-it/metricagent/internal/backuper"
 	"github.com/krtech-it/metricagent/internal/config"
 	"github.com/krtech-it/metricagent/internal/delivery/http/dto"
@@ -10,12 +11,12 @@ import (
 
 type MetricUseCase struct {
 	storage    repository.Storage
-	backup     *backuper.Backuper
+	backup     backuper.BackupInterface
 	cfg        *config.Config
 	flagBackup bool
 }
 
-func NewMetricUseCase(storage repository.Storage, backup *backuper.Backuper, cfg *config.Config) *MetricUseCase {
+func NewMetricUseCase(storage repository.Storage, backup backuper.BackupInterface, cfg *config.Config) *MetricUseCase {
 	return &MetricUseCase{
 		storage:    storage,
 		backup:     backup,
@@ -101,4 +102,8 @@ func (m *MetricUseCase) ReadBackupAllMetrics() error {
 	}
 	m.flagBackup = true
 	return nil
+}
+
+func (m *MetricUseCase) Ping(ctx *gin.Context) error {
+	return m.storage.Ping(ctx)
 }
