@@ -61,6 +61,9 @@ func (m *MemStorage) GetAll() ([]*models.Metrics, error) {
 }
 
 func (m *MemStorage) Ping(ctx *gin.Context) error {
+	if m.db == nil {
+		return fmt.Errorf("db is not configured")
+	}
 	ctxPing, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	if err := m.db.PingContext(ctxPing); err != nil {

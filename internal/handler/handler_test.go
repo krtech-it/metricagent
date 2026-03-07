@@ -1,6 +1,9 @@
 package handler
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -9,16 +12,18 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/krtech-it/metricagent/internal/backuper"
 	"github.com/krtech-it/metricagent/internal/config"
+	dto_model "github.com/krtech-it/metricagent/internal/delivery/http/dto"
 	"github.com/krtech-it/metricagent/internal/logger"
 	"github.com/krtech-it/metricagent/internal/model"
 	"github.com/krtech-it/metricagent/internal/repository"
 	"github.com/krtech-it/metricagent/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func newTestHandler(t *testing.T) (*Handler, repository.Storage) {
-	storage := repository.NewMemStorage()
+	storage := repository.NewMemStorage(nil)
 	logger.Initialize("info")
 	cfg := &config.Config{
 		StoreInterval: 1,
@@ -139,6 +144,68 @@ func TestUpdateMetricErrors(t *testing.T) {
 	}
 }
 
+func TestUpdateMetricJSONOK(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	h, storage := newTestHandler(t)
+
+	value := 12.5
+	reqMetric := dto_model.RequestUpdateMetric{
+		MainMetric: dto_model.MainMetric{ID: "Alloc", MType: "gauge"},
+		Value:      &value,
+	}
+	body, err := json.Marshal(reqMetric)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/update/", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = req
+
+	h.UpdateMetricJSON(c)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Header().Get("Content-Type"), "application/json")
+
+	metric, err := storage.Get("Alloc")
+	require.NoError(t, err)
+	require.NotNil(t, metric.Value)
+	assert.InEpsilon(t, 12.5, *metric.Value, 0.0001)
+}
+
+func TestGetMetricJSONOK(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	h, storage := newTestHandler(t)
+
+	value := 7.25
+	err := storage.Create(&models.Metrics{
+		ID:    "Alloc",
+		MType: models.Gauge,
+		Value: &value,
+	})
+	require.NoError(t, err)
+
+	reqMetric := dto_model.RequestGetMetric{
+		MainMetric: dto_model.MainMetric{ID: "Alloc", MType: "gauge"},
+	}
+	body, err := json.Marshal(reqMetric)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/value/", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = req
+
+	h.GetMetricJSON(c)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var resp dto_model.ResponseGetMetric
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	require.NotNil(t, resp.Value)
+	assert.InEpsilon(t, 7.25, *resp.Value, 0.0001)
+}
+
 func TestGetMetric(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -232,4 +299,46 @@ func TestGetMainHTML(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), "Alloc")
+}
+
+func TestPingOK(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStorage := repository.NewMockStorage(ctrl)
+	mockStorage.EXPECT().Ping(gomock.Any()).Return(nil)
+
+	logger.Initialize("info")
+	cfg := &config.Config{}
+	useCase := service.NewMetricUseCase(mockStorage, nil, cfg)
+	h := NewHandler(useCase, logger.Log, cfg)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodGet, "/ping", nil)
+
+	h.Ping(c)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestPingError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStorage := repository.NewMockStorage(ctrl)
+	mockStorage.EXPECT().Ping(gomock.Any()).Return(errors.New("db down"))
+
+	logger.Initialize("info")
+	cfg := &config.Config{}
+	useCase := service.NewMetricUseCase(mockStorage, nil, cfg)
+	h := NewHandler(useCase, logger.Log, cfg)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodGet, "/ping", nil)
+
+	h.Ping(c)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 }
