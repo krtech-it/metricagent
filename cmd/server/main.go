@@ -21,7 +21,7 @@ func main() {
 	}
 	db, err := config_db.NewDB(cfg.DatabaseDSN)
 	if err != nil {
-		log.Fatal(err)
+		logger.Log.Info(err.Error())
 	}
 	defer db.Close()
 
