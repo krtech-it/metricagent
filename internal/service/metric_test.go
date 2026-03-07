@@ -32,7 +32,7 @@ func TestMetricUseCase_UpdateCounterAccumulates(t *testing.T) {
 	useCase := NewMetricUseCase(storage, nil, cfg)
 
 	first := int64(5)
-	err := useCase.Update(&models.Metrics{
+	err := useCase.Update(t.Context(), &models.Metrics{
 		ID:    "PollCount",
 		MType: models.Counter,
 		Delta: &first,
@@ -40,14 +40,14 @@ func TestMetricUseCase_UpdateCounterAccumulates(t *testing.T) {
 	require.NoError(t, err)
 
 	second := int64(7)
-	err = useCase.Update(&models.Metrics{
+	err = useCase.Update(t.Context(), &models.Metrics{
 		ID:    "PollCount",
 		MType: models.Counter,
 		Delta: &second,
 	})
 	require.NoError(t, err)
 
-	metric, err := storage.Get("PollCount")
+	metric, err := storage.Get(t.Context(), "PollCount")
 	require.NoError(t, err)
 	require.NotNil(t, metric.Delta)
 	assert.Equal(t, int64(12), *metric.Delta)
@@ -59,7 +59,7 @@ func TestMetricUseCase_UpdateGaugeReplaces(t *testing.T) {
 	useCase := NewMetricUseCase(storage, nil, cfg)
 
 	first := 1.5
-	err := useCase.Update(&models.Metrics{
+	err := useCase.Update(t.Context(), &models.Metrics{
 		ID:    "Alloc",
 		MType: models.Gauge,
 		Value: &first,
@@ -67,14 +67,14 @@ func TestMetricUseCase_UpdateGaugeReplaces(t *testing.T) {
 	require.NoError(t, err)
 
 	second := 2.5
-	err = useCase.Update(&models.Metrics{
+	err = useCase.Update(t.Context(), &models.Metrics{
 		ID:    "Alloc",
 		MType: models.Gauge,
 		Value: &second,
 	})
 	require.NoError(t, err)
 
-	metric, err := storage.Get("Alloc")
+	metric, err := storage.Get(t.Context(), "Alloc")
 	require.NoError(t, err)
 	require.NotNil(t, metric.Value)
 	assert.InEpsilon(t, 2.5, *metric.Value, 0.0001)
@@ -86,14 +86,14 @@ func TestMetricUseCase_UpdateCreatesWhenMissing(t *testing.T) {
 	useCase := NewMetricUseCase(storage, nil, cfg)
 
 	value := 10.0
-	err := useCase.Update(&models.Metrics{
+	err := useCase.Update(t.Context(), &models.Metrics{
 		ID:    "HeapAlloc",
 		MType: models.Gauge,
 		Value: &value,
 	})
 	require.NoError(t, err)
 
-	metric, err := storage.Get("HeapAlloc")
+	metric, err := storage.Get(t.Context(), "HeapAlloc")
 	require.NoError(t, err)
 	require.NotNil(t, metric.Value)
 	assert.InEpsilon(t, 10.0, *metric.Value, 0.0001)
@@ -101,12 +101,12 @@ func TestMetricUseCase_UpdateCreatesWhenMissing(t *testing.T) {
 
 func TestMetricUseCase_UpdateWritesBackupWhenSync(t *testing.T) {
 	storage := repository.NewMemStorage(nil)
-	cfg := &config.Config{StoreInterval: 0}
+	cfg := &config.Config{StoreInterval: 0, TypeDB: "file"}
 	backup := &fakeBackup{}
 	useCase := NewMetricUseCase(storage, backup, cfg)
 
 	value := 1.0
-	err := useCase.Update(&models.Metrics{
+	err := useCase.Update(t.Context(), &models.Metrics{
 		ID:    "Alloc",
 		MType: models.Gauge,
 		Value: &value,
@@ -132,14 +132,14 @@ func TestMetricUseCase_ReadBackupAllMetricsLoadsStorage(t *testing.T) {
 	}
 	useCase := NewMetricUseCase(storage, backup, cfg)
 
-	require.NoError(t, useCase.ReadBackupAllMetrics())
+	require.NoError(t, useCase.ReadBackupAllMetrics(t.Context()))
 
-	gauge, err := storage.Get("Alloc")
+	gauge, err := storage.Get(t.Context(), "Alloc")
 	require.NoError(t, err)
 	require.NotNil(t, gauge.Value)
 	assert.InEpsilon(t, 2.5, *gauge.Value, 0.0001)
 
-	counter, err := storage.Get("PollCount")
+	counter, err := storage.Get(t.Context(), "PollCount")
 	require.NoError(t, err)
 	require.NotNil(t, counter.Delta)
 	assert.Equal(t, int64(3), *counter.Delta)

@@ -10,11 +10,10 @@
 package repository
 
 import (
-	reflect "reflect"
-
-	gin "github.com/gin-gonic/gin"
+	"context"
 	models "github.com/krtech-it/metricagent/internal/model"
 	gomock "go.uber.org/mock/gomock"
+	reflect "reflect"
 )
 
 // MockStorage is a mock of Storage interface.
@@ -42,7 +41,7 @@ func (m *MockStorage) EXPECT() *MockStorageMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockStorage) Create(metric *models.Metrics) error {
+func (m *MockStorage) Create(ctx context.Context, metric *models.Metrics) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", metric)
 	ret0, _ := ret[0].(error)
@@ -50,13 +49,13 @@ func (m *MockStorage) Create(metric *models.Metrics) error {
 }
 
 // Create indicates an expected call of Create.
-func (mr *MockStorageMockRecorder) Create(metric any) *gomock.Call {
+func (mr *MockStorageMockRecorder) Create(ctx any, metric any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockStorage)(nil).Create), metric)
 }
 
 // Get mocks base method.
-func (m *MockStorage) Get(id string) (*models.Metrics, error) {
+func (m *MockStorage) Get(ctx context.Context, id string) (*models.Metrics, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", id)
 	ret0, _ := ret[0].(*models.Metrics)
@@ -65,13 +64,13 @@ func (m *MockStorage) Get(id string) (*models.Metrics, error) {
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockStorageMockRecorder) Get(id any) *gomock.Call {
+func (mr *MockStorageMockRecorder) Get(ctx any, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockStorage)(nil).Get), id)
 }
 
 // GetAll mocks base method.
-func (m *MockStorage) GetAll() ([]*models.Metrics, error) {
+func (m *MockStorage) GetAll(ctx context.Context) ([]*models.Metrics, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetAll")
 	ret0, _ := ret[0].([]*models.Metrics)
@@ -80,13 +79,13 @@ func (m *MockStorage) GetAll() ([]*models.Metrics, error) {
 }
 
 // GetAll indicates an expected call of GetAll.
-func (mr *MockStorageMockRecorder) GetAll() *gomock.Call {
+func (mr *MockStorageMockRecorder) GetAll(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockStorage)(nil).GetAll))
 }
 
 // Ping mocks base method.
-func (m *MockStorage) Ping(ctx *gin.Context) error {
+func (m *MockStorage) Ping(ctx context.Context) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Ping", ctx)
 	ret0, _ := ret[0].(error)
@@ -100,7 +99,7 @@ func (mr *MockStorageMockRecorder) Ping(ctx any) *gomock.Call {
 }
 
 // Update mocks base method.
-func (m *MockStorage) Update(metric *models.Metrics) error {
+func (m *MockStorage) Update(ctx context.Context, metric *models.Metrics) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Update", metric)
 	ret0, _ := ret[0].(error)
@@ -108,7 +107,7 @@ func (m *MockStorage) Update(metric *models.Metrics) error {
 }
 
 // Update indicates an expected call of Update.
-func (mr *MockStorageMockRecorder) Update(metric any) *gomock.Call {
+func (mr *MockStorageMockRecorder) Update(ctx any, metric any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockStorage)(nil).Update), metric)
 }
