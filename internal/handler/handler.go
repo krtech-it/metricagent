@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"github.com/bytedance/gopkg/util/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/krtech-it/metricagent/internal/config"
 	dto_model "github.com/krtech-it/metricagent/internal/delivery/http/dto"
@@ -70,13 +71,69 @@ func (h *Handler) UpdateMetricJSON(c *gin.Context) {
 			Hash:  "",
 		}
 	}
-	if err := h.metricUseCase.Update(metric); err != nil {
+	if err := h.metricUseCase.Update(c.Request.Context(), metric); err != nil {
 		h.logger.Error("failed to update metric", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to update metric"})
 		return
 	}
 	c.Header("Content-Type", "application/json")
 	c.JSON(http.StatusOK, dtoMetric)
+}
+
+func (h *Handler) UpdatesMetricJSON(c *gin.Context) {
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		h.logger.Info("failed to read body", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read body"})
+		return
+	}
+	var dtoMetrics []dto_model.RequestUpdateMetric
+	if err := json.Unmarshal(body, &dtoMetrics); err != nil {
+		h.logger.Info("failed to parse body", zap.Error(err))
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "failed to unmarshal body"})
+		return
+	}
+
+	metrics := make([]*models.Metrics, 0)
+
+	for _, dtoMetric := range dtoMetrics {
+		if !(dtoMetric.MType == models.Gauge || dtoMetric.MType == models.Counter) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid metric type", "detail": dtoMetric.ID})
+			return
+		}
+		if dtoMetric.ID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid metric id", "detail": dtoMetric.ID})
+			return
+		}
+		var metric *models.Metrics
+
+		if dtoMetric.MType == models.Counter {
+			metric = &models.Metrics{
+				ID:    dtoMetric.ID,
+				MType: dtoMetric.MType,
+				Delta: dtoMetric.Delta,
+				Value: nil,
+				Hash:  "",
+			}
+		} else if dtoMetric.MType == models.Gauge {
+			metric = &models.Metrics{
+				ID:    dtoMetric.ID,
+				MType: dtoMetric.MType,
+				Value: dtoMetric.Value,
+				Delta: nil,
+				Hash:  "",
+			}
+		}
+		metrics = append(metrics, metric)
+	}
+
+	if err := h.metricUseCase.UpdateBatch(c.Request.Context(), metrics); err != nil {
+		h.logger.Error("failed to update metrics", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to update metrics"})
+		return
+	}
+	c.Header("Content-Type", "application/json")
+	c.JSON(http.StatusOK, dtoMetrics)
 }
 
 func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
@@ -132,7 +189,7 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 			Hash:  "",
 		}
 	}
-	if err := h.metricUseCase.Update(metric); err != nil {
+	if err := h.metricUseCase.Update(r.Context(), metric); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
@@ -158,7 +215,7 @@ func (h *Handler) GetMetricJSON(c *gin.Context) {
 		c.String(http.StatusNotFound, "invalid path")
 		return
 	}
-	metric, err := h.metricUseCase.GetMetric(dtoMetric.ID)
+	metric, err := h.metricUseCase.GetMetric(c.Request.Context(), dtoMetric.ID)
 	if err != nil {
 		c.String(http.StatusNotFound, "ID: %s does not exist", dtoMetric.ID)
 		return
@@ -188,7 +245,7 @@ func (h *Handler) GetMetric(c *gin.Context) {
 		c.String(http.StatusNotFound, "invalid path")
 		return
 	}
-	metric, err := h.metricUseCase.GetMetric(ID)
+	metric, err := h.metricUseCase.GetMetric(c.Request.Context(), ID)
 	if err != nil {
 		c.String(http.StatusNotFound, "ID: %s does not exist", ID)
 		return
@@ -210,11 +267,21 @@ func (h *Handler) GetMetric(c *gin.Context) {
 }
 
 func (h *Handler) GetMainHTML(c *gin.Context) {
-	metrics, err := h.metricUseCase.GetAllMetrics()
+	metrics, err := h.metricUseCase.GetAllMetrics(c.Request.Context())
 	if err != nil {
 		h.logger.Error("handler: GetMainHTML", zap.Error(err))
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 	c.HTML(http.StatusOK, "main_server.html", metrics)
+}
+
+func (h *Handler) Ping(c *gin.Context) {
+	if err := h.metricUseCase.Ping(c.Request.Context()); err != nil {
+		logger.Error("handler: Ping", zap.Error(err))
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+	c.Header("Content-Type", "text/plain")
+	c.Status(http.StatusOK)
 }
