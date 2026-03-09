@@ -90,6 +90,9 @@ func (m *DBStorage) GetAll(ctx context.Context) ([]*models.Metrics, error) {
 		}
 		metrics = append(metrics, &metric)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return metrics, nil
 }
 
