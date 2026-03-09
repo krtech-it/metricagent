@@ -80,6 +80,62 @@ func (h *Handler) UpdateMetricJSON(c *gin.Context) {
 	c.JSON(http.StatusOK, dtoMetric)
 }
 
+func (h *Handler) UpdatesMetricJSON(c *gin.Context) {
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		h.logger.Info("failed to read body", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read body"})
+		return
+	}
+	var dtoMetrics []dto_model.RequestUpdateMetric
+	if err := json.Unmarshal(body, &dtoMetrics); err != nil {
+		h.logger.Info("failed to parse body", zap.Error(err))
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "failed to unmarshal body"})
+		return
+	}
+
+	metrics := make([]*models.Metrics, 0)
+
+	for _, dtoMetric := range dtoMetrics {
+		if !(dtoMetric.MType == models.Gauge || dtoMetric.MType == models.Counter) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid metric type", "detail": dtoMetric.ID})
+			return
+		}
+		if dtoMetric.ID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid metric id", "detail": dtoMetric.ID})
+			return
+		}
+		var metric *models.Metrics
+
+		if dtoMetric.MType == models.Counter {
+			metric = &models.Metrics{
+				ID:    dtoMetric.ID,
+				MType: dtoMetric.MType,
+				Delta: dtoMetric.Delta,
+				Value: nil,
+				Hash:  "",
+			}
+		} else if dtoMetric.MType == models.Gauge {
+			metric = &models.Metrics{
+				ID:    dtoMetric.ID,
+				MType: dtoMetric.MType,
+				Value: dtoMetric.Value,
+				Delta: nil,
+				Hash:  "",
+			}
+		}
+		metrics = append(metrics, metric)
+	}
+
+	if err := h.metricUseCase.UpdateBatch(c.Request.Context(), metrics); err != nil {
+		h.logger.Error("failed to update metrics", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to update metrics"})
+		return
+	}
+	c.Header("Content-Type", "application/json")
+	c.JSON(http.StatusOK, dtoMetrics)
+}
+
 func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "", http.StatusNotFound)

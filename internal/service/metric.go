@@ -25,6 +25,10 @@ func NewMetricUseCase(storage repository.Storage, backup backuper.BackupInterfac
 	}
 }
 
+func (m *MetricUseCase) UpdateBatch(ctx context.Context, metrics []*models.Metrics) error {
+	return m.storage.Upsert(ctx, metrics)
+}
+
 func (m *MetricUseCase) Update(ctx context.Context, metric *models.Metrics) error {
 	var errResult error
 	if metric.MType == models.Counter {
