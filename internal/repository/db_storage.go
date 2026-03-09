@@ -66,6 +66,9 @@ set
             ELSE
                 NULL
         END`)
+	if err != nil {
+		return fmt.Errorf("failed to prepare statement %w", err)
+	}
 	defer stmt.Close()
 	for _, metric := range metrics {
 		if _, err := stmt.ExecContext(ctx, metric.ID, metric.MType,
