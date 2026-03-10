@@ -7,11 +7,9 @@ import (
 	"errors"
 	"fmt"
 	models "github.com/krtech-it/metricagent/internal/agent/dto"
-	"net"
 	"net/http"
 	"slices"
 	"strconv"
-	"syscall"
 	"time"
 )
 
