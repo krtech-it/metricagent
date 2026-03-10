@@ -4,11 +4,15 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	models "github.com/krtech-it/metricagent/internal/agent/dto"
+	"net"
 	"net/http"
 	"slices"
 	"strconv"
+	"syscall"
+	"time"
 )
 
 var (
@@ -141,6 +145,31 @@ func SendMetricJSON(name string, value interface{}, host string) error {
 }
 
 func SendMetricsJSON(items map[string]interface{}, host string) error {
+	const (
+		maxRetries = 3
+		baseDelay  = 2 * time.Second
+	)
+
+	var lastErr error
+	delay := 1 * time.Second
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		err := SendMetricsOnce(items, host)
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+		if !IsRetriableError(err) {
+			return fmt.Errorf("non-retriable error - %d: %w", attempt, err)
+		}
+		if attempt != 1 && attempt != maxRetries {
+			delay += baseDelay
+			time.Sleep(delay)
+		}
+	}
+	return fmt.Errorf("failed after %d attempts: %w", maxRetries, lastErr)
+}
+
+func SendMetricsOnce(items map[string]interface{}, host string) error {
 	var mType string
 	var requestMetric models.RequestMetricUpdate
 	var requestMetrics []models.RequestMetricUpdate
@@ -162,7 +191,10 @@ func SendMetricsJSON(items map[string]interface{}, host string) error {
 			}
 		} else {
 			mType = "counter"
-			v, _ := value.(int64)
+			v, ok := value.(int64)
+			if !ok {
+				return fmt.Errorf("unexpected counter value type for %s: %T", name, value)
+			}
 			requestMetric.Delta = &v
 		}
 		requestMetric.MType = mType
@@ -173,31 +205,64 @@ func SendMetricsJSON(items map[string]interface{}, host string) error {
 	url := fmt.Sprintf("http://%s/updates/", host)
 	body, err := json.Marshal(requestMetrics)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal request metrics: %w", err)
 	}
 	var gzBuf bytes.Buffer
 	gz := gzip.NewWriter(&gzBuf)
 	if _, err := gz.Write(body); err != nil {
-		return err
+		return fmt.Errorf("failed to gzip request body: %w", err)
 	}
 	if err := gz.Close(); err != nil {
-		return err
+		return fmt.Errorf("gzip close faile: %w", err)
 	}
 	req, err := http.NewRequest("POST", url, &gzBuf)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Content-Encoding", "gzip")
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode >= 500 {
+			return fmt.Errorf("server error: %s: %w", resp.Status, errors.New(resp.Status))
+		}
 		return fmt.Errorf("bad status: %s, url - %s", resp.Status, url)
 	}
 	return nil
+}
+
+func IsRetriableError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// Проверяем на наличие сетевых ошибок в цепочке обёрток
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		return true // таймауты, временная недоступность
+	}
+
+	// Ошибки подключения
+	var opErr *net.OpError
+	if errors.As(err, &opErr) {
+		return true
+	}
+
+	// Системные ошибки: connection refused, network unreachable
+	if errors.Is(err, syscall.ECONNREFUSED) ||
+		errors.Is(err, syscall.ENETUNREACH) ||
+		errors.Is(err, syscall.EHOSTUNREACH) {
+		return true
+	}
+
+	// По умолчанию — ошибка не повторимая (логика, валидация и т.д.)
+	return false
 }
