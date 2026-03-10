@@ -238,31 +238,3 @@ func SendMetricsOnce(items map[string]interface{}, host string) error {
 	}
 	return nil
 }
-
-func IsRetriableError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	// Проверяем на наличие сетевых ошибок в цепочке обёрток
-	var netErr net.Error
-	if errors.As(err, &netErr) {
-		return true // таймауты, временная недоступность
-	}
-
-	// Ошибки подключения
-	var opErr *net.OpError
-	if errors.As(err, &opErr) {
-		return true
-	}
-
-	// Системные ошибки: connection refused, network unreachable
-	if errors.Is(err, syscall.ECONNREFUSED) ||
-		errors.Is(err, syscall.ENETUNREACH) ||
-		errors.Is(err, syscall.EHOSTUNREACH) {
-		return true
-	}
-
-	// По умолчанию — ошибка не повторимая (логика, валидация и т.д.)
-	return false
-}
