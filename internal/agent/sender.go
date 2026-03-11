@@ -159,10 +159,10 @@ func SendMetricsJSON(items map[string]interface{}, host string) error {
 		if !IsRetriableError(err) {
 			return fmt.Errorf("non-retriable error - %d: %w", attempt, err)
 		}
-		if attempt != 1 && attempt != maxRetries {
+		if attempt != 1 {
 			delay += baseDelay
-			time.Sleep(delay)
 		}
+		time.Sleep(delay)
 	}
 	return fmt.Errorf("failed after %d attempts: %w", maxRetries, lastErr)
 }

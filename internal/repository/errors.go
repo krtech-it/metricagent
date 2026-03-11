@@ -84,7 +84,7 @@ func WithRetry(ctx context.Context, intervals []time.Duration, fn func() error) 
 		lastErr = err
 
 		if !IsRetryableError(err) {
-			return fmt.Errorf("retryable error: %w", lastErr)
+			return fmt.Errorf("non-retryable error: %w", lastErr)
 		}
 	}
 	return fmt.Errorf("last error: %w", lastErr)

@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"github.com/bytedance/gopkg/util/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/krtech-it/metricagent/internal/config"
 	dto_model "github.com/krtech-it/metricagent/internal/delivery/http/dto"
@@ -278,7 +277,7 @@ func (h *Handler) GetMainHTML(c *gin.Context) {
 
 func (h *Handler) Ping(c *gin.Context) {
 	if err := h.metricUseCase.Ping(c.Request.Context()); err != nil {
-		logger.Error("handler: Ping", zap.Error(err))
+		h.logger.Error("handler: Ping", zap.Error(err))
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
