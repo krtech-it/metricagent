@@ -31,5 +31,8 @@ func applyMigrations(dsn string) error {
 		return err
 	}
 	defer m.Close()
-	return m.Up()
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return err
+	}
+	return nil
 }
