@@ -30,7 +30,7 @@ func main() {
 		case <-tickerPool.C:
 			collector.Add()
 		case <-tickerReport.C:
-			err := agent.SendMetricsJSON(collector.CopyStorage(), cfg.Host+":"+strconv.Itoa(cfg.Port))
+			err := agent.SendMetricsJSON(collector.CopyStorage(), cfg.Host+":"+strconv.Itoa(cfg.Port), cfg)
 			if err != nil {
 				log.Printf("error send metric: %s \n", err)
 				collector.ResetCounter()
