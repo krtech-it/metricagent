@@ -10,6 +10,7 @@ type SetServer struct {
 	fileStoragePath string
 	restore         bool
 	databaseDSN     string
+	hashKey         string
 }
 
 var FlagServer = SetServer{}
@@ -20,6 +21,7 @@ func ParseFlags() {
 	flag.StringVar(&FlagServer.fileStoragePath, "f", "", "file storage path")
 	flag.BoolVar(&FlagServer.restore, "r", false, "restore storage")
 	flag.StringVar(&FlagServer.databaseDSN, "d", "", "database DSN")
+	flag.StringVar(&FlagServer.hashKey, "k", "", "hash key")
 	if !flag.Parsed() {
 		flag.Parse()
 	}

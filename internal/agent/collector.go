@@ -1,6 +1,9 @@
 package agent
 
 import (
+	"fmt"
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/mem"
 	"math/rand"
 	"runtime"
 	"sync"
@@ -23,10 +26,10 @@ func NewCollector() *Collector {
 }
 
 func (c *Collector) Add() {
-
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.storage["Alloc"] = memStats.Alloc
 	c.storage["BuckHashSys"] = memStats.BuckHashSys
 	c.storage["Frees"] = memStats.Frees
@@ -58,7 +61,36 @@ func (c *Collector) Add() {
 	c.counter++
 	c.storage["PollCount"] = c.counter
 	c.storage["RandomValue"] = rand.Float64()
-	c.mu.Unlock()
+}
+
+func (c *Collector) AddGopsutil() {
+
+	var (
+		freeMemory,
+		totalMemory uint64
+	)
+
+	vMem, err := mem.VirtualMemory()
+	if err != nil {
+		totalMemory = 0
+		freeMemory = 0
+	} else {
+		totalMemory = vMem.Total
+		freeMemory = vMem.Available
+	}
+	percentes, err := cpu.Percent(0, true)
+	if err != nil {
+		percentes = make([]float64, 0)
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.storage["FreeMemory"] = freeMemory
+	c.storage["TotalMemory"] = totalMemory
+	for i, perc := range percentes {
+		key := fmt.Sprintf("CPUutilization%d", i+1)
+		c.storage[key] = perc
+	}
 }
 
 func (c *Collector) CopyStorage() map[string]interface{} {
@@ -69,6 +101,7 @@ func (c *Collector) CopyStorage() map[string]interface{} {
 		storageCopy[k] = v
 	}
 	c.reserveCounter = c.counter
+	c.counter = 0
 	return storageCopy
 }
 
