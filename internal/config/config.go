@@ -18,6 +18,7 @@ type Config struct {
 	Restore         bool
 	DatabaseDSN     string
 	TypeDB          string
+	HashKey         *string
 }
 
 func LoadConfig() (*Config, error) {
@@ -48,6 +49,13 @@ func LoadConfig() (*Config, error) {
 	cfg.Port = port
 
 	cfg.LogLevel = getEnv("LOG_LEVEL", "info")
+
+	hashKey := getEnv("KEY", FlagServer.hashKey)
+	if hashKey == "" {
+		cfg.HashKey = nil
+	} else {
+		cfg.HashKey = &hashKey
+	}
 	return cfg, nil
 }
 
