@@ -50,7 +50,6 @@ var (
 		"RandomValue",
 		"FreeMemory",
 		"TotalMemory",
-		"CPUutilization",
 	}
 )
 

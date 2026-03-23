@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -16,9 +17,12 @@ func TestCollector_Add(t *testing.T) {
 	c := NewCollector()
 
 	c.Add()
+	c.AddGopsutil()
 	randomValue, ok := c.storage["RandomValue"]
 	require.Equal(t, true, ok)
-	assert.Equal(t, len(gaugeArea)+1, len(c.storage))
+	countCPU, err := cpu.Counts(true)
+	assert.NoError(t, err)
+	assert.Equal(t, len(gaugeArea)+1+countCPU, len(c.storage))
 	assert.Equal(t, int64(1), c.counter)
 	c.Add()
 	assert.Equal(t, int64(2), c.counter)
