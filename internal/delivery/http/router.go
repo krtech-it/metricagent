@@ -67,6 +67,7 @@ func NewRouter(logger *zap.Logger, cfg *config.Config, db *sql.DB) *gin.Engine {
 	r.LoadHTMLGlob("internal/templates/*")
 	r.GET("/ping", h.Ping)
 	r.POST("/update/", h.UpdateMetricJSON)
+	r.POST("/updates/", h.UpdatesMetricJSON)
 	r.POST("/update/:metricType/:ID/:value", gin.WrapF(h.UpdateMetric))
 	r.POST("/value/", h.GetMetricJSON)
 	r.GET("/value/:metricType/:ID", h.GetMetric)

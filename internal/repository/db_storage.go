@@ -42,6 +42,43 @@ func (m *DBStorage) Update(ctx context.Context, metric *models.Metrics) error {
 	return nil
 }
 
+func (m *DBStorage) Upsert(ctx context.Context, metrics []*models.Metrics) error {
+	tx, err := m.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	stmt, err := tx.PrepareContext(ctx, `
+INSERT INTO metrics
+(id, m_type, delta, value) values ($1, $2, $3, $4)
+ON CONFLICT(id) DO UPDATE
+set 
+    m_type = EXCLUDED.m_type,
+        delta = CASE
+            WHEN EXCLUDED.m_type = 'counter' THEN
+                COALESCE(metrics.delta, 0) + COALESCE(EXCLUDED.delta, 0)
+            ELSE
+                NULL
+        END,
+        value = CASE
+            WHEN EXCLUDED.m_type = 'gauge' THEN
+                EXCLUDED.value
+            ELSE
+                NULL
+        END`)
+	if err != nil {
+		return fmt.Errorf("failed to prepare statement %w", err)
+	}
+	defer stmt.Close()
+	for _, metric := range metrics {
+		if _, err := stmt.ExecContext(ctx, metric.ID, metric.MType,
+			metric.Delta, metric.Value); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
 func (m *DBStorage) Get(ctx context.Context, ID string) (*models.Metrics, error) {
 	metric := &models.Metrics{}
 	var (
@@ -89,6 +126,9 @@ func (m *DBStorage) GetAll(ctx context.Context) ([]*models.Metrics, error) {
 			metric.Value = &valueNull.Float64
 		}
 		metrics = append(metrics, &metric)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return metrics, nil
 }
