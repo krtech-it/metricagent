@@ -19,36 +19,48 @@ func NewDBStorage(db *sql.DB) Storage {
 }
 
 func (m *DBStorage) Create(ctx context.Context, metric *models.Metrics) error {
-	if _, err := m.Get(ctx, metric.ID); err == nil {
-		return fmt.Errorf("metric %v already exists", metric.ID)
-	}
-	_, err := m.db.ExecContext(ctx, "INSERT INTO metrics (id, m_type, delta, value) values ($1, $2, $3, $4)",
-		metric.ID, metric.MType, metric.Delta, metric.Value)
-	if err != nil {
-		return err
-	}
-	return nil
+	retryIntervals := []time.Duration{time.Second, 3 * time.Second, 5 * time.Second}
+
+	return WithRetry(ctx, retryIntervals, func() error {
+		if _, err := m.Get(ctx, metric.ID); err == nil {
+			return fmt.Errorf("metric %v already exists", metric.ID)
+		}
+		_, err := m.db.ExecContext(ctx, "INSERT INTO metrics (id, m_type, delta, value) values ($1, $2, $3, $4)",
+			metric.ID, metric.MType, metric.Delta, metric.Value)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (m *DBStorage) Update(ctx context.Context, metric *models.Metrics) error {
-	if _, err := m.Get(ctx, metric.ID); err != nil {
-		return fmt.Errorf("metric %v does not exist", metric.ID)
-	}
-	_, err := m.db.ExecContext(ctx, "update metrics set m_type = $2, delta = $3, value = $4 WHERE id = $1",
-		metric.ID, metric.MType, metric.Delta, metric.Value)
-	if err != nil {
-		return err
-	}
-	return nil
+	retryIntervals := []time.Duration{time.Second, 3 * time.Second, 5 * time.Second}
+
+	return WithRetry(ctx, retryIntervals, func() error {
+		if _, err := m.Get(ctx, metric.ID); err != nil {
+			return fmt.Errorf("metric %v does not exist", metric.ID)
+		}
+		_, err := m.db.ExecContext(ctx, "update metrics set m_type = $2, delta = $3, value = $4 WHERE id = $1",
+			metric.ID, metric.MType, metric.Delta, metric.Value)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
 }
 
 func (m *DBStorage) Upsert(ctx context.Context, metrics []*models.Metrics) error {
-	tx, err := m.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	stmt, err := tx.PrepareContext(ctx, `
+	retryIntervals := []time.Duration{time.Second, 3 * time.Second, 5 * time.Second}
+
+	return WithRetry(ctx, retryIntervals, func() error {
+		tx, err := m.db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback()
+		stmt, err := tx.PrepareContext(ctx, `
 INSERT INTO metrics
 (id, m_type, delta, value) values ($1, $2, $3, $4)
 ON CONFLICT(id) DO UPDATE
@@ -66,17 +78,19 @@ set
             ELSE
                 NULL
         END`)
-	if err != nil {
-		return fmt.Errorf("failed to prepare statement %w", err)
-	}
-	defer stmt.Close()
-	for _, metric := range metrics {
-		if _, err := stmt.ExecContext(ctx, metric.ID, metric.MType,
-			metric.Delta, metric.Value); err != nil {
-			return err
+		if err != nil {
+			return fmt.Errorf("failed to prepare statement %w", err)
 		}
-	}
-	return tx.Commit()
+		defer stmt.Close()
+		for _, metric := range metrics {
+			if _, err := stmt.ExecContext(ctx, metric.ID, metric.MType,
+				metric.Delta, metric.Value); err != nil {
+				return err
+			}
+		}
+		return tx.Commit()
+	})
+
 }
 
 func (m *DBStorage) Get(ctx context.Context, ID string) (*models.Metrics, error) {
@@ -104,33 +118,39 @@ func (m *DBStorage) Get(ctx context.Context, ID string) (*models.Metrics, error)
 
 func (m *DBStorage) GetAll(ctx context.Context) ([]*models.Metrics, error) {
 	var metrics []*models.Metrics
-	rows, err := m.db.QueryContext(ctx, "select id, m_type, delta, value from metrics")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var (
-			metric    models.Metrics
-			deltaNull sql.NullInt64
-			valueNull sql.NullFloat64
-		)
-		err = rows.Scan(&metric.ID, &metric.MType, &deltaNull, &valueNull)
+	retryIntervals := []time.Duration{time.Second, 3 * time.Second, 5 * time.Second}
+
+	err := WithRetry(ctx, retryIntervals, func() error {
+
+		rows, err := m.db.QueryContext(ctx, "select id, m_type, delta, value from metrics")
 		if err != nil {
-			return nil, err
+			return err
 		}
-		if deltaNull.Valid {
-			metric.Delta = &deltaNull.Int64
+		defer rows.Close()
+		for rows.Next() {
+			var (
+				metric    models.Metrics
+				deltaNull sql.NullInt64
+				valueNull sql.NullFloat64
+			)
+			err = rows.Scan(&metric.ID, &metric.MType, &deltaNull, &valueNull)
+			if err != nil {
+				return err
+			}
+			if deltaNull.Valid {
+				metric.Delta = &deltaNull.Int64
+			}
+			if valueNull.Valid {
+				metric.Value = &valueNull.Float64
+			}
+			metrics = append(metrics, &metric)
 		}
-		if valueNull.Valid {
-			metric.Value = &valueNull.Float64
+		if err := rows.Err(); err != nil {
+			return err
 		}
-		metrics = append(metrics, &metric)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return metrics, nil
+		return nil
+	})
+	return metrics, err
 }
 
 func (m *DBStorage) Ping(ctx context.Context) error {

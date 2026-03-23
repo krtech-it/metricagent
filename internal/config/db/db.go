@@ -3,28 +3,36 @@ package db
 import (
 	"database/sql"
 	"errors"
+	"fmt"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
 func NewDB(dsn string) (*sql.DB, error) {
 	if dsn == "" {
 		return nil, errors.New("dsn is empty")
 	}
+
+	if err := applyMigrations(dsn); err != nil {
+		return nil, fmt.Errorf("failed to apply migrations: %w", err)
+	}
+
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, err
 	}
-	InitSchema(db)
 	return db, nil
 }
 
-func InitSchema(db *sql.DB) error {
-	_, err := db.Exec(`
-		CREATE TABLE metrics (
-    id VARCHAR(50) PRIMARY KEY,
-    m_type VARCHAR(50) NOT NULL,
-    delta bigint default null,
-    value double precision default null
-)
-	`)
-	return err
+func applyMigrations(dsn string) error {
+	m, err := migrate.New("file://migrations", dsn)
+	if err != nil {
+		return err
+	}
+	defer m.Close()
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return err
+	}
+	return nil
 }

@@ -22,8 +22,9 @@ func main() {
 	db, err := config_db.NewDB(cfg.DatabaseDSN)
 	if err != nil {
 		logger.Log.Info(err.Error())
+	} else {
+		defer db.Close()
 	}
-	defer db.Close()
 
 	router := delivery.NewRouter(logger.Log, cfg, db)
 	logger.Log.Info("Listening on port " + strconv.Itoa(cfg.Port))
