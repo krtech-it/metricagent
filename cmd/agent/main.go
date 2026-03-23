@@ -30,18 +30,9 @@ func main() {
 		case <-tickerPool.C:
 			collector.Add()
 		case <-tickerReport.C:
-			errFlag := false
-			for name, value := range collector.CopyStorage() {
-				err := agent.SendMetricJSON(name, value, cfg.Host+":"+strconv.Itoa(cfg.Port))
-				if err != nil {
-					log.Printf("error send metric: %s \n", err)
-					if name == "PollCount" {
-						errFlag = true
-						break
-					}
-				}
-			}
-			if !errFlag {
+			err := agent.SendMetricsJSON(collector.CopyStorage(), cfg.Host+":"+strconv.Itoa(cfg.Port))
+			if err != nil {
+				log.Printf("error send metric: %s \n", err)
 				collector.ResetCounter()
 			}
 		}
