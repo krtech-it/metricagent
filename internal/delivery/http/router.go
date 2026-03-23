@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	"context"
 	"database/sql"
 	"github.com/gin-gonic/gin"
 	"github.com/krtech-it/metricagent/internal/backuper"
@@ -15,27 +16,47 @@ import (
 
 func NewRouter(logger *zap.Logger, cfg *config.Config, db *sql.DB) *gin.Engine {
 	r := gin.Default()
-	storage := repository.NewMemStorage(db)
+	var storage repository.Storage
+	if db != nil {
+		storage = repository.NewDBStorage(db)
+	} else {
+		storage = repository.NewMemStorage(nil)
+	}
+
+	switch {
+	case db != nil:
+		cfg.TypeDB = "postgres"
+	case cfg.FileStoragePath != "":
+		cfg.TypeDB = "file"
+	default:
+		cfg.TypeDB = "memory"
+	}
+
 	backupService, err := backuper.NewBackuper(cfg.FileStoragePath, logger)
 	if err != nil {
 		logger.Error("failed to init backup service", zap.Error(err))
 	}
 	metricUseCase := service.NewMetricUseCase(storage, backupService, cfg)
 
-	if cfg.Restore {
-		if err := metricUseCase.ReadBackupAllMetrics(); err != nil {
-			logger.Warn("ReadBackupAllMetrics failed", zap.Error(err))
-		}
-	}
-	if cfg.StoreInterval > 0 {
-		ticker := time.NewTicker(time.Duration(cfg.StoreInterval) * time.Second)
-		go func() {
-			for range ticker.C {
-				if err := metricUseCase.WriteBackupAllMetrics(); err != nil {
-					logger.Error(err.Error())
+	if cfg.TypeDB != "postgres" {
+		if cfg.TypeDB == "file" {
+
+			if cfg.Restore {
+				if err := metricUseCase.ReadBackupAllMetrics(context.Background()); err != nil {
+					logger.Warn("ReadBackupAllMetrics failed", zap.Error(err))
 				}
 			}
-		}()
+			if db == nil && cfg.StoreInterval > 0 {
+				ticker := time.NewTicker(time.Duration(cfg.StoreInterval) * time.Second)
+				go func() {
+					for range ticker.C {
+						if err := metricUseCase.WriteBackupAllMetrics(context.Background()); err != nil {
+							logger.Error(err.Error())
+						}
+					}
+				}()
+			}
+		}
 	}
 
 	r.Use(middleware.LoggerMiddleware(logger))

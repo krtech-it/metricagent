@@ -1,9 +1,9 @@
 package main
 
 import (
-	"database/sql"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/krtech-it/metricagent/internal/config"
+	config_db "github.com/krtech-it/metricagent/internal/config/db"
 	delivery "github.com/krtech-it/metricagent/internal/delivery/http"
 	"github.com/krtech-it/metricagent/internal/logger"
 	"log"
@@ -19,9 +19,9 @@ func main() {
 	if err := logger.Initialize(cfg.LogLevel); err != nil {
 		log.Fatal(err)
 	}
-	db, err := sql.Open("pgx", cfg.DatabaseDSN)
+	db, err := config_db.NewDB(cfg.DatabaseDSN)
 	if err != nil {
-		log.Fatal(err)
+		logger.Log.Info(err.Error())
 	}
 	defer db.Close()
 

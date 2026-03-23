@@ -51,7 +51,7 @@ func TestUpdateMetricGaugeOK(t *testing.T) {
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 	assert.Equal(t, "text/plain", res.Header.Get("Content-Type"))
 
-	metric, err := storage.Get("Alloc")
+	metric, err := storage.Get(req.Context(), "Alloc")
 	require.NoError(t, err)
 	require.NotNil(t, metric.Value)
 	assert.InEpsilon(t, 123.5, *metric.Value, 0.0001)
@@ -76,7 +76,7 @@ func TestUpdateMetricCounterAccumulates(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, res2.StatusCode)
 
-	metric, err := storage.Get("PollCount")
+	metric, err := storage.Get(req2.Context(), "PollCount")
 	require.NoError(t, err)
 	require.NotNil(t, metric.Delta)
 	assert.Equal(t, int64(12), *metric.Delta)
@@ -167,7 +167,7 @@ func TestUpdateMetricJSONOK(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Header().Get("Content-Type"), "application/json")
 
-	metric, err := storage.Get("Alloc")
+	metric, err := storage.Get(c.Request.Context(), "Alloc")
 	require.NoError(t, err)
 	require.NotNil(t, metric.Value)
 	assert.InEpsilon(t, 12.5, *metric.Value, 0.0001)
@@ -178,7 +178,7 @@ func TestGetMetricJSONOK(t *testing.T) {
 	h, storage := newTestHandler(t)
 
 	value := 7.25
-	err := storage.Create(&models.Metrics{
+	err := storage.Create(t.Context(), &models.Metrics{
 		ID:    "Alloc",
 		MType: models.Gauge,
 		Value: &value,
@@ -260,7 +260,7 @@ func TestGetMetric(t *testing.T) {
 			h, storage := newTestHandler(t)
 			tt.metricObj.Value = &tt.Value
 			tt.metricObj.Delta = &tt.Delta
-			err := storage.Create(tt.metricObj)
+			err := storage.Create(t.Context(), tt.metricObj)
 			require.NoError(t, err)
 
 			rec := httptest.NewRecorder()
@@ -282,7 +282,7 @@ func TestGetMainHTML(t *testing.T) {
 	h, storage := newTestHandler(t)
 
 	value := 1.5
-	err := storage.Create(&models.Metrics{
+	err := storage.Create(t.Context(), &models.Metrics{
 		ID:    "Alloc",
 		MType: models.Gauge,
 		Value: &value,

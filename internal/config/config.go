@@ -17,6 +17,7 @@ type Config struct {
 	FileStoragePath string
 	Restore         bool
 	DatabaseDSN     string
+	TypeDB          string
 }
 
 func LoadConfig() (*Config, error) {
