@@ -11,16 +11,18 @@ type Config struct {
 	Host            string
 	Port            int
 	ReportInterval  int
-	PoolInterval    int
+	PollInterval    int
 	LogLevel        string
 	StoreInterval   int
 	FileStoragePath string
 	Restore         bool
+	DatabaseDSN     string
 }
 
 func LoadConfig() (*Config, error) {
 	cfg := &Config{}
 	address := getEnv("ADDRESS", FlagServer.addr)
+	cfg.DatabaseDSN = getEnv("DATABASE_DSN", FlagServer.databaseDSN)
 	if storeInterval, err := strconv.Atoi(getEnv("STORE_INTERVAL", strconv.Itoa(FlagServer.storeInterval))); err == nil {
 		cfg.StoreInterval = storeInterval
 	} else {

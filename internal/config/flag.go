@@ -9,6 +9,7 @@ type SetServer struct {
 	storeInterval   int
 	fileStoragePath string
 	restore         bool
+	databaseDSN     string
 }
 
 var FlagServer = SetServer{}
@@ -18,6 +19,7 @@ func ParseFlags() {
 	flag.IntVar(&FlagServer.storeInterval, "i", 300, "interval in seconds")
 	flag.StringVar(&FlagServer.fileStoragePath, "f", "storage.json", "file storage path")
 	flag.BoolVar(&FlagServer.restore, "r", false, "restore storage")
+	flag.StringVar(&FlagServer.databaseDSN, "d", "postgresql://myuser:mypassword@localhost:5432/dbname?sslmode=disable", "database DSN")
 	if !flag.Parsed() {
 		flag.Parse()
 	}
