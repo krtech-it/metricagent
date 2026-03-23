@@ -61,7 +61,9 @@ func NewRouter(logger *zap.Logger, cfg *config.Config, db *sql.DB) *gin.Engine {
 
 	r.Use(middleware.LoggerMiddleware(logger))
 	r.Use(middleware.DecompressMiddleware())
+	r.Use(middleware.CheckHashMiddleware(cfg))
 	r.Use(middleware.GzipMiddleware())
+	r.Use(middleware.ResponseHashMiddleware(cfg))
 
 	h := handler.NewHandler(metricUseCase, logger, cfg)
 	r.LoadHTMLGlob("internal/templates/*")

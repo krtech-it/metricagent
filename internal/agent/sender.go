@@ -3,13 +3,18 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/krtech-it/metricagent/internal/agent/config"
 	models "github.com/krtech-it/metricagent/internal/agent/dto"
 	"net/http"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -43,6 +48,8 @@ var (
 		"Sys",
 		"TotalAlloc",
 		"RandomValue",
+		"FreeMemory",
+		"TotalMemory",
 	}
 )
 
@@ -142,7 +149,7 @@ func SendMetricJSON(name string, value interface{}, host string) error {
 	return nil
 }
 
-func SendMetricsJSON(items map[string]interface{}, host string) error {
+func SendMetricsJSON(items map[string]interface{}, host string, cfg *config.Config) error {
 	const (
 		maxRetries = 3
 		baseDelay  = 2 * time.Second
@@ -151,7 +158,7 @@ func SendMetricsJSON(items map[string]interface{}, host string) error {
 	var lastErr error
 	delay := 1 * time.Second
 	for attempt := 1; attempt <= maxRetries; attempt++ {
-		err := SendMetricsOnce(items, host)
+		err := SendMetricsOnce(items, host, cfg)
 		if err == nil {
 			return nil
 		}
@@ -167,12 +174,12 @@ func SendMetricsJSON(items map[string]interface{}, host string) error {
 	return fmt.Errorf("failed after %d attempts: %w", maxRetries, lastErr)
 }
 
-func SendMetricsOnce(items map[string]interface{}, host string) error {
+func SendMetricsOnce(items map[string]interface{}, host string, cfg *config.Config) error {
 	var mType string
 	var requestMetric models.RequestMetricUpdate
 	var requestMetrics []models.RequestMetricUpdate
 	for name, value := range items {
-		if slices.Contains(gaugeArea[:], name) {
+		if slices.Contains(gaugeArea[:], name) || strings.HasPrefix(name, "CPUutilization") {
 			mType = "gauge"
 			switch v := value.(type) {
 			case float64:
@@ -201,9 +208,15 @@ func SendMetricsOnce(items map[string]interface{}, host string) error {
 	}
 
 	url := fmt.Sprintf("http://%s/updates/", host)
+	var hashValue string
 	body, err := json.Marshal(requestMetrics)
 	if err != nil {
 		return fmt.Errorf("failed to marshal request metrics: %w", err)
+	}
+	if cfg.HashKey != nil {
+		h := hmac.New(sha256.New, []byte(*cfg.HashKey))
+		h.Write(body)
+		hashValue = hex.EncodeToString(h.Sum(nil))
 	}
 	var gzBuf bytes.Buffer
 	gz := gzip.NewWriter(&gzBuf)
@@ -220,6 +233,9 @@ func SendMetricsOnce(items map[string]interface{}, host string) error {
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Content-Encoding", "gzip")
+	if hashValue != "" {
+		req.Header.Set("HashSHA256", hashValue)
+	}
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
