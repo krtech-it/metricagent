@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -47,6 +48,9 @@ var (
 		"Sys",
 		"TotalAlloc",
 		"RandomValue",
+		"FreeMemory",
+		"TotalMemory",
+		"CPUutilization",
 	}
 )
 
@@ -176,7 +180,7 @@ func SendMetricsOnce(items map[string]interface{}, host string, cfg *config.Conf
 	var requestMetric models.RequestMetricUpdate
 	var requestMetrics []models.RequestMetricUpdate
 	for name, value := range items {
-		if slices.Contains(gaugeArea[:], name) {
+		if slices.Contains(gaugeArea[:], name) || strings.HasPrefix(name, "CPUutilization") {
 			mType = "gauge"
 			switch v := value.(type) {
 			case float64:

@@ -13,6 +13,7 @@ type Config struct {
 	ReportInterval int
 	PollInterval   int
 	HashKey        *string
+	RateLimit      int
 }
 
 func LoadConfig() (*Config, error) {
@@ -22,6 +23,7 @@ func LoadConfig() (*Config, error) {
 	pollStr := getEnv("POLL_INTERVAL", FlagAgent.pollInterval)
 	reportStr := getEnv("REPORT_INTERVAL", FlagAgent.reportInterval)
 	hashKey := getEnv("KEY", FlagAgent.hashKey)
+	rateLimit := getEnv("RATE_LIMIT", FlagAgent.rateLimit)
 
 	args := strings.Split(address, ":")
 	if len(args) != 2 {
@@ -51,6 +53,11 @@ func LoadConfig() (*Config, error) {
 	} else {
 		cfg.HashKey = &hashKey
 	}
+	rateLimitInt, err := strconv.Atoi(rateLimit)
+	if err != nil {
+		return nil, fmt.Errorf("rate limit is not int: %w", err)
+	}
+	cfg.RateLimit = rateLimitInt
 	return cfg, nil
 }
 

@@ -9,6 +9,7 @@ type SetAgent struct {
 	reportInterval string
 	pollInterval   string
 	hashKey        string
+	rateLimit      string
 }
 
 var FlagAgent = SetAgent{}
@@ -18,6 +19,7 @@ func ParseFlags() {
 	flag.StringVar(&FlagAgent.pollInterval, "p", "2", "poll interval seconds")
 	flag.StringVar(&FlagAgent.reportInterval, "r", "10", "report interval seconds")
 	flag.StringVar(&FlagAgent.hashKey, "k", "", "hash key")
+	flag.StringVar(&FlagAgent.rateLimit, "l", "5", "rate limit")
 	if !flag.Parsed() {
 		flag.Parse()
 	}
