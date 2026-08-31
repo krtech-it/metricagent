@@ -371,7 +371,9 @@ func TestUpdateMetricNotifiesAudit(t *testing.T) {
 
 	h.UpdateMetric(rec, req)
 
-	assert.Equal(t, http.StatusOK, rec.Result().StatusCode)
+	res := rec.Result()
+	defer res.Body.Close()
+	assert.Equal(t, http.StatusOK, res.StatusCode)
 }
 
 func TestUpdateMetricDoesNotNotifyAuditOnError(t *testing.T) {
@@ -386,7 +388,9 @@ func TestUpdateMetricDoesNotNotifyAuditOnError(t *testing.T) {
 
 	h.UpdateMetric(rec, req)
 
-	assert.Equal(t, http.StatusBadRequest, rec.Result().StatusCode)
+	res := rec.Result()
+	defer res.Body.Close()
+	assert.Equal(t, http.StatusBadRequest, res.StatusCode)
 }
 
 func TestUpdateMetricJSONNotifiesAudit(t *testing.T) {
