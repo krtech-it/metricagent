@@ -3,28 +3,33 @@ package handler
 import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"github.com/krtech-it/metricagent/internal/audit"
 	"github.com/krtech-it/metricagent/internal/config"
 	dto_model "github.com/krtech-it/metricagent/internal/delivery/http/dto"
 	models "github.com/krtech-it/metricagent/internal/model"
 	"github.com/krtech-it/metricagent/internal/service"
 	"go.uber.org/zap"
 	"io"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Handler struct {
-	metricUseCase *service.MetricUseCase
-	logger        *zap.Logger
-	cfg           *config.Config
+	metricUseCase  *service.MetricUseCase
+	logger         *zap.Logger
+	cfg            *config.Config
+	auditPublisher *audit.Publisher
 }
 
-func NewHandler(metricUseCase *service.MetricUseCase, logger *zap.Logger, cfg *config.Config) *Handler {
+func NewHandler(metricUseCase *service.MetricUseCase, logger *zap.Logger, cfg *config.Config, auditPublisher *audit.Publisher) *Handler {
 	return &Handler{
-		metricUseCase: metricUseCase,
-		logger:        logger,
-		cfg:           cfg,
+		metricUseCase:  metricUseCase,
+		logger:         logger,
+		cfg:            cfg,
+		auditPublisher: auditPublisher,
 	}
 }
 
@@ -75,6 +80,12 @@ func (h *Handler) UpdateMetricJSON(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to update metric"})
 		return
 	}
+	h.auditPublisher.Notify(audit.Event{
+		Timestamp: time.Now().Unix(),
+		Metrics:   []string{dtoMetric.ID},
+		IPAddress: c.ClientIP(),
+	})
+
 	c.Header("Content-Type", "application/json")
 	c.JSON(http.StatusOK, dtoMetric)
 }
@@ -131,6 +142,16 @@ func (h *Handler) UpdatesMetricJSON(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to update metrics"})
 		return
 	}
+	metricNames := make([]string, 0, len(dtoMetrics))
+	for _, dtoMetric := range dtoMetrics {
+		metricNames = append(metricNames, dtoMetric.ID)
+	}
+	h.auditPublisher.Notify(audit.Event{
+		Timestamp: time.Now().Unix(),
+		Metrics:   metricNames,
+		IPAddress: c.ClientIP(),
+	})
+
 	c.Header("Content-Type", "application/json")
 	c.JSON(http.StatusOK, dtoMetrics)
 }
@@ -190,10 +211,25 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.metricUseCase.Update(r.Context(), metric); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
+
+	h.auditPublisher.Notify(audit.Event{
+		Timestamp: time.Now().Unix(),
+		Metrics:   []string{ID},
+		IPAddress: clientIP(r),
+	})
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
+}
+
+func clientIP(r *http.Request) string {
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return ip
 }
 
 func (h *Handler) GetMetricJSON(c *gin.Context) {

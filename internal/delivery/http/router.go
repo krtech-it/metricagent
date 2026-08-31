@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"github.com/gin-gonic/gin"
+	"github.com/krtech-it/metricagent/internal/audit"
 	"github.com/krtech-it/metricagent/internal/backuper"
 	"github.com/krtech-it/metricagent/internal/config"
 	"github.com/krtech-it/metricagent/internal/handler"
@@ -38,6 +39,18 @@ func NewRouter(logger *zap.Logger, cfg *config.Config, db *sql.DB) *gin.Engine {
 	}
 	metricUseCase := service.NewMetricUseCase(storage, backupService, cfg)
 
+	auditPublisher := audit.NewPublisher(logger)
+	if cfg.AuditFile != "" {
+		if fileObserver, err := audit.NewFileObserver(cfg.AuditFile); err != nil {
+			logger.Error("failed to init audit file observer", zap.Error(err))
+		} else {
+			auditPublisher.Register(fileObserver)
+		}
+	}
+	if cfg.AuditURL != "" {
+		auditPublisher.Register(audit.NewHTTPObserver(cfg.AuditURL))
+	}
+
 	if cfg.TypeDB != "postgres" {
 		if cfg.TypeDB == "file" {
 
@@ -65,7 +78,7 @@ func NewRouter(logger *zap.Logger, cfg *config.Config, db *sql.DB) *gin.Engine {
 	r.Use(middleware.GzipMiddleware())
 	r.Use(middleware.ResponseHashMiddleware(cfg))
 
-	h := handler.NewHandler(metricUseCase, logger, cfg)
+	h := handler.NewHandler(metricUseCase, logger, cfg, auditPublisher)
 	r.LoadHTMLGlob("internal/templates/*")
 	r.GET("/ping", h.Ping)
 	r.POST("/update/", h.UpdateMetricJSON)

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/krtech-it/metricagent/internal/audit"
 	"github.com/krtech-it/metricagent/internal/backuper"
 	"github.com/krtech-it/metricagent/internal/config"
 	dto_model "github.com/krtech-it/metricagent/internal/delivery/http/dto"
@@ -34,7 +35,7 @@ func newTestHandler(t *testing.T) (*Handler, repository.Storage) {
 		t.Fatalf("failed to create backuper: %v", err)
 	}
 	metricUseCase := service.NewMetricUseCase(storage, backup, cfg)
-	return NewHandler(metricUseCase, logger.Log, cfg), storage
+	return NewHandler(metricUseCase, logger.Log, cfg, audit.NewPublisher(logger.Log)), storage
 }
 
 func TestUpdateMetricGaugeOK(t *testing.T) {
@@ -311,7 +312,7 @@ func TestPingOK(t *testing.T) {
 	logger.Initialize("info")
 	cfg := &config.Config{}
 	useCase := service.NewMetricUseCase(mockStorage, nil, cfg)
-	h := NewHandler(useCase, logger.Log, cfg)
+	h := NewHandler(useCase, logger.Log, cfg, audit.NewPublisher(logger.Log))
 
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -332,7 +333,7 @@ func TestPingError(t *testing.T) {
 	logger.Initialize("info")
 	cfg := &config.Config{}
 	useCase := service.NewMetricUseCase(mockStorage, nil, cfg)
-	h := NewHandler(useCase, logger.Log, cfg)
+	h := NewHandler(useCase, logger.Log, cfg, audit.NewPublisher(logger.Log))
 
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -341,4 +342,140 @@ func TestPingError(t *testing.T) {
 	h.Ping(c)
 
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+}
+
+func newTestHandlerWithObserver(t *testing.T, observer audit.Observer) *Handler {
+	storage := repository.NewMemStorage(nil)
+	logger.Initialize("info")
+	cfg := &config.Config{StoreInterval: 1}
+	backupPath := filepath.Join(t.TempDir(), "test_storage.json")
+	backup, err := backuper.NewBackuper(backupPath, logger.Log)
+	require.NoError(t, err)
+	metricUseCase := service.NewMetricUseCase(storage, backup, cfg)
+	return NewHandler(metricUseCase, logger.Log, cfg, audit.NewPublisher(logger.Log, observer))
+}
+
+func TestUpdateMetricNotifiesAudit(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	observer := audit.NewMockObserver(ctrl)
+	observer.EXPECT().Notify(gomock.Any()).DoAndReturn(func(event audit.Event) error {
+		assert.Equal(t, []string{"Alloc"}, event.Metrics)
+		return nil
+	})
+
+	h := newTestHandlerWithObserver(t, observer)
+	req := httptest.NewRequest(http.MethodPost, "/update/gauge/Alloc/1", nil)
+	rec := httptest.NewRecorder()
+
+	h.UpdateMetric(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Result().StatusCode)
+}
+
+func TestUpdateMetricDoesNotNotifyAuditOnError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	observer := audit.NewMockObserver(ctrl)
+
+	h := newTestHandlerWithObserver(t, observer)
+	req := httptest.NewRequest(http.MethodPost, "/update/gauge/Alloc/not-a-number", nil)
+	rec := httptest.NewRecorder()
+
+	h.UpdateMetric(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Result().StatusCode)
+}
+
+func TestUpdateMetricJSONNotifiesAudit(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	observer := audit.NewMockObserver(ctrl)
+	observer.EXPECT().Notify(gomock.Any()).DoAndReturn(func(event audit.Event) error {
+		assert.Equal(t, []string{"Alloc"}, event.Metrics)
+		return nil
+	})
+
+	h := newTestHandlerWithObserver(t, observer)
+
+	value := 12.5
+	reqMetric := dto_model.RequestUpdateMetric{
+		MainMetric: dto_model.MainMetric{ID: "Alloc", MType: "gauge"},
+		Value:      &value,
+	}
+	body, err := json.Marshal(reqMetric)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/update/", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = req
+
+	h.UpdateMetricJSON(c)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestUpdateMetricJSONDoesNotNotifyAuditOnValidationError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	observer := audit.NewMockObserver(ctrl)
+
+	h := newTestHandlerWithObserver(t, observer)
+
+	reqMetric := dto_model.RequestUpdateMetric{
+		MainMetric: dto_model.MainMetric{ID: "", MType: "gauge"},
+	}
+	body, err := json.Marshal(reqMetric)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/update/", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = req
+
+	h.UpdateMetricJSON(c)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestUpdatesMetricJSONNotifiesAuditWithAllMetrics(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	observer := audit.NewMockObserver(ctrl)
+	observer.EXPECT().Notify(gomock.Any()).DoAndReturn(func(event audit.Event) error {
+		assert.Equal(t, []string{"Alloc", "PollCount"}, event.Metrics)
+		return nil
+	})
+
+	h := newTestHandlerWithObserver(t, observer)
+
+	gaugeValue := 1.5
+	counterValue := int64(3)
+	reqMetrics := []dto_model.RequestUpdateMetric{
+		{MainMetric: dto_model.MainMetric{ID: "Alloc", MType: "gauge"}, Value: &gaugeValue},
+		{MainMetric: dto_model.MainMetric{ID: "PollCount", MType: "counter"}, Delta: &counterValue},
+	}
+	body, err := json.Marshal(reqMetrics)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/updates/", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = req
+
+	h.UpdatesMetricJSON(c)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
 }

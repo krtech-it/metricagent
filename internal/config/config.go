@@ -19,6 +19,8 @@ type Config struct {
 	DatabaseDSN     string
 	TypeDB          string
 	HashKey         *string
+	AuditFile       string
+	AuditURL        string
 }
 
 func LoadConfig() (*Config, error) {
@@ -49,6 +51,9 @@ func LoadConfig() (*Config, error) {
 	cfg.Port = port
 
 	cfg.LogLevel = getEnv("LOG_LEVEL", "info")
+
+	cfg.AuditFile = getEnv("AUDIT_FILE", FlagServer.auditFile)
+	cfg.AuditURL = getEnv("AUDIT_URL", FlagServer.auditURL)
 
 	hashKey := getEnv("KEY", FlagServer.hashKey)
 	if hashKey == "" {
